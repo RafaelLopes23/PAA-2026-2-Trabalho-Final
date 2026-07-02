@@ -1,0 +1,5 @@
+hnswlib
+numpy
+pandas
+matplotlib
+pyarrow

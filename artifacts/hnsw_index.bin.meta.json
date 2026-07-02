@@ -1,0 +1,11 @@
+{
+  "dim": 384,
+  "n_elements": 50000,
+  "build_time_seconds": 9.083608129999448,
+  "params": {
+    "M": 16,
+    "ef_construction": 200,
+    "ef_search": 100,
+    "space": "cosine"
+  }
+}
