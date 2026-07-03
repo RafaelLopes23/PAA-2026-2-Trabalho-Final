@@ -1,0 +1,23 @@
+{
+  "raw": {
+    "plot_summaries_count": 42306,
+    "movie_metadata_count": 81741,
+    "plot_summaries_bytes": 75934033,
+    "movie_metadata_bytes": 16252421,
+    "total_size_bytes": 92186454
+  },
+  "processed": {
+    "movies_count": 42201,
+    "parquet_size_bytes": 92078870,
+    "avg_synopsis_chars": 1779.9,
+    "avg_synopsis_tokens": 311.9,
+    "removed_invalid_id": 0,
+    "removed_duplicates": 0,
+    "removed_no_synopsis": 6,
+    "removed_too_short": 0,
+    "removed_no_title": 99
+  },
+  "timing": {
+    "preprocess_seconds": 6.823
+  }
+}
