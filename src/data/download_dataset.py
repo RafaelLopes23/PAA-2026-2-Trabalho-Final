@@ -18,7 +18,7 @@ import urllib.request
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_SOURCE = Path("/.../.../.../Downloads/MovieSummaries")
+DEFAULT_SOURCE = Path.home() / "Downloads" / "MovieSummaries"
 RAW_DIR = PROJECT_ROOT / "data" / "raw" / "MovieSummaries"
 DOCS_PATH = PROJECT_ROOT / "docs" / "DATASET.md"
 
@@ -140,7 +140,7 @@ def write_dataset_doc(stats: dict) -> None:
 python -m src.data.download_dataset
 ```
 
-Por padrão, o script copia os arquivos de `/Users/welder/Downloads/MovieSummaries`
+Por padrão, o script copia os arquivos de `~/Downloads/MovieSummaries`
 para `data/raw/MovieSummaries/`. Se os arquivos não existirem localmente,
 tenta baixar as versões `.gz` oficiais do site da CMU.
 
