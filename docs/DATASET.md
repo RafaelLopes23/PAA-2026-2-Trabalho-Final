@@ -2,7 +2,8 @@
 
 ## Fonte
 
-- **Dataset:** [CMU Movie Summary Corpus](https://www.cs.cmu.edu/~ark/movie/)
+- **Dataset:** [CMU Movie Summary Corpus](https://www.cs.cmu.edu/~ark/personas/)
+- **Download:** [https://www.cs.cmu.edu/~ark/personas/data/MovieSummaries.tar.gz](https://www.cs.cmu.edu/~ark/personas/data/MovieSummaries.tar.gz)
 - **Licença:** Creative Commons Attribution-ShareAlike
 - **Referência:** David Bamman, Brendan O'Connor and Noah Smith, *Learning Latent Personas of Film Characters*, ACL 2013.
 
@@ -14,7 +15,8 @@ python -m src.data.download_dataset
 
 Por padrão, o script copia os arquivos de `~/Downloads/MovieSummaries`
 para `data/raw/MovieSummaries/`. Se os arquivos não existirem localmente,
-tenta baixar as versões `.gz` oficiais do site da CMU.
+baixa o tarball oficial (`MovieSummaries.tar.gz`, ~46 MB) de
+[https://www.cs.cmu.edu/~ark/personas/](https://www.cs.cmu.edu/~ark/personas/).
 
 ## Arquivos no projeto
 
@@ -23,9 +25,6 @@ tenta baixar as versões `.gz` oficiais do site da CMU.
 | `plot_summaries.txt` | 72.4 MB, 42,306 linhas |
 | `movie.metadata.tsv` | 15.5 MB, 81,741 linhas |
 | `README.txt` | 0.0 MB, 79 linhas |
-| `character.metadata.tsv` | 39.6 MB, 450,669 linhas |
-| `name.clusters.txt` | 0.1 MB, 2,666 linhas |
-| `tvtropes.clusters.txt` | 0.1 MB, 501 linhas |
 
 ## Formato
 

@@ -1,6 +1,6 @@
 # PAA 2026.2 — Sistema Q&A sobre Filmes
 
-Trabalho final da disciplina de Projeto e Análise de Algoritmos (PAA). O objetivo é desenvolver um sistema de perguntas e respostas sobre filmes, utilizando o [CMU Movie Summary Corpus](https://www.cs.cmu.edu/~ark/movie/), com busca semântica nas sinopses e formatação de respostas via LLM local.
+Trabalho final da disciplina de Projeto e Análise de Algoritmos (PAA). O objetivo é desenvolver um sistema de perguntas e respostas sobre filmes, utilizando o [CMU Movie Summary Corpus](https://www.cs.cmu.edu/~ark/personas/), com busca semântica nas sinopses e formatação de respostas via LLM local.
 
 ## Visão geral da arquitetura
 
@@ -217,6 +217,6 @@ O ganho do HNSW sobre busca exata depende de N, d e dos parâmetros (`M`, `ef_se
 
 ## Referências
 
-- [CMU Movie Summary Corpus](https://www.cs.cmu.edu/~ark/movie/)
+- [CMU Movie Summary Corpus](https://www.cs.cmu.edu/~ark/personas/)
 - Bamman, O'Connor & Smith, *Learning Latent Personas of Film Characters*, ACL 2013
 - Documentação do dataset: [`docs/DATASET.md`](docs/DATASET.md)

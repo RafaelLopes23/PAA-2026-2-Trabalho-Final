@@ -12,15 +12,21 @@ Uso:
 from __future__ import annotations
 
 import argparse
-import gzip
 import shutil
+import tarfile
+import tempfile
 import urllib.request
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SOURCE = Path.home() / "Downloads" / "MovieSummaries"
 RAW_DIR = PROJECT_ROOT / "data" / "raw" / "MovieSummaries"
+RAW_PARENT = RAW_DIR.parent
 DOCS_PATH = PROJECT_ROOT / "docs" / "DATASET.md"
+
+DATASET_PAGE_URL = "https://www.cs.cmu.edu/~ark/personas/"
+TARBALL_URL = "https://www.cs.cmu.edu/~ark/personas/data/MovieSummaries.tar.gz"
+README_URL = "https://www.cs.cmu.edu/~ark/personas/data/README.txt"
 
 REQUIRED_FILES = (
     "plot_summaries.txt",
@@ -33,12 +39,6 @@ OPTIONAL_FILES = (
     "name.clusters.txt",
     "tvtropes.clusters.txt",
 )
-
-DOWNLOAD_URLS = {
-    "plot_summaries.txt": "https://www.cs.cmu.edu/~ark/movie/plot_summaries.txt.gz",
-    "movie.metadata.tsv": "https://www.cs.cmu.edu/~ark/movie/movie.metadata.tsv.gz",
-    "character.metadata.tsv": "https://www.cs.cmu.edu/~ark/movie/character.metadata.tsv.gz",
-}
 
 EXPECTED_MIN_LINES = {
     "plot_summaries.txt": 42_000,
@@ -57,15 +57,52 @@ def copy_file(src: Path, dst: Path) -> None:
     print(f"[ok] copiado: {dst.relative_to(PROJECT_ROOT)}")
 
 
-def download_and_decompress(url: str, dst: Path) -> None:
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    gz_path = dst.with_suffix(dst.suffix + ".gz")
-    print(f"[download] {url}")
-    urllib.request.urlretrieve(url, gz_path)
-    with gzip.open(gz_path, "rb") as src, dst.open("wb") as out:
-        shutil.copyfileobj(src, out)
-    gz_path.unlink(missing_ok=True)
-    print(f"[ok] baixado: {dst.relative_to(PROJECT_ROOT)}")
+def download_tarball_and_extract(url: str, dest_parent: Path) -> None:
+    dest_parent.mkdir(parents=True, exist_ok=True)
+    tmp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+        print(f"[download] {url}")
+        urllib.request.urlretrieve(url, tmp_path)
+        with tarfile.open(tmp_path, "r:gz") as tar:
+            tar.extractall(path=dest_parent)
+        print(f"[ok] extraído em {RAW_DIR.relative_to(PROJECT_ROOT)}")
+    finally:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
+
+
+def ensure_readme() -> None:
+    readme_path = RAW_DIR / "README.txt"
+    if readme_path.exists():
+        return
+    RAW_DIR.mkdir(parents=True, exist_ok=True)
+    print(f"[download] {README_URL}")
+    urllib.request.urlretrieve(README_URL, readme_path)
+    print(f"[ok] baixado: {readme_path.relative_to(PROJECT_ROOT)}")
+
+
+def download_official_dataset(include_optional: bool) -> None:
+    required_present = all((RAW_DIR / name).exists() for name in REQUIRED_FILES)
+    if required_present:
+        return
+
+    print("[info] arquivos ausentes em data/raw/; baixando tarball oficial...")
+    download_tarball_and_extract(TARBALL_URL, RAW_PARENT)
+    ensure_readme()
+
+    missing = [name for name in REQUIRED_FILES if not (RAW_DIR / name).exists()]
+    if missing:
+        raise FileNotFoundError(
+            "Download concluído, mas arquivos obrigatórios ausentes: "
+            + ", ".join(missing)
+        )
+
+    if include_optional:
+        for name in OPTIONAL_FILES:
+            if not (RAW_DIR / name).exists():
+                print(f"[aviso] arquivo opcional ausente após download: {name}")
 
 
 def ensure_dataset(source_dir: Path | None, include_optional: bool) -> dict:
@@ -84,16 +121,7 @@ def ensure_dataset(source_dir: Path | None, include_optional: bool) -> dict:
                 continue
             copy_file(src, RAW_DIR / name)
     else:
-        missing = [name for name in REQUIRED_FILES if not (RAW_DIR / name).exists()]
-        if missing:
-            print("[info] arquivos ausentes em data/raw/; tentando download oficial...")
-            for name in missing:
-                url = DOWNLOAD_URLS.get(name)
-                if url is None:
-                    raise FileNotFoundError(
-                        f"Arquivo obrigatório ausente e sem URL de download: {name}"
-                    )
-                download_and_decompress(url, RAW_DIR / name)
+        download_official_dataset(include_optional)
 
     stats: dict = {"files": {}}
     for name in files_to_copy:
@@ -130,7 +158,8 @@ def write_dataset_doc(stats: dict) -> None:
 
 ## Fonte
 
-- **Dataset:** [CMU Movie Summary Corpus](https://www.cs.cmu.edu/~ark/movie/)
+- **Dataset:** [CMU Movie Summary Corpus]({DATASET_PAGE_URL})
+- **Download:** [{TARBALL_URL}]({TARBALL_URL})
 - **Licença:** Creative Commons Attribution-ShareAlike
 - **Referência:** David Bamman, Brendan O'Connor and Noah Smith, *Learning Latent Personas of Film Characters*, ACL 2013.
 
@@ -142,7 +171,8 @@ python -m src.data.download_dataset
 
 Por padrão, o script copia os arquivos de `~/Downloads/MovieSummaries`
 para `data/raw/MovieSummaries/`. Se os arquivos não existirem localmente,
-tenta baixar as versões `.gz` oficiais do site da CMU.
+baixa o tarball oficial (`MovieSummaries.tar.gz`, ~46 MB) de
+[{DATASET_PAGE_URL}]({DATASET_PAGE_URL}).
 
 ## Arquivos no projeto
 
