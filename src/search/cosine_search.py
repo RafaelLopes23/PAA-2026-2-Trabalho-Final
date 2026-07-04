@@ -1,19 +1,18 @@
 """
 cosine_search.py
 
-STUB TEMPORÁRIO — este módulo é responsabilidade do Welder.
-Implementa busca exata por similaridade de cosseno, usada como "gabarito"
-(ground truth) para calcular o recall@k do HNSW.
+Busca exata por similaridade de cosseno, usada como ground truth para
+calcular recall@k do HNSW e como backend de retrieval no sistema Q&A.
 
-Assim que o Welder entregar a versão final, basta substituir este arquivo
-pelo dele — a interface (nomes de função e parâmetros) deve ser mantida
-para não quebrar o restante do código do Henrique.
+Funciona com qualquer matriz de embeddings (Word2Vec, Sentence Embeddings, etc.)
+desde que query e base compartilhem a mesma dimensão d.
 
 Complexidade: O(N * d) por consulta, onde N = número de filmes e
-d = dimensão dos vetores (compara a query contra todos os N vetores).
+d = dimensão dos vetores.
 """
 
 from __future__ import annotations
+
 import numpy as np
 
 
@@ -28,7 +27,7 @@ def exact_cosine_search(
     Parameters
     ----------
     query_vector : np.ndarray, shape (d,)
-        Vetor da pergunta do usuário já embedado.
+        Vetor da pergunta já embedado.
     embeddings : np.ndarray, shape (N, d)
         Matriz com os vetores de todas as sinopses da base.
     top_k : int
@@ -42,15 +41,13 @@ def exact_cosine_search(
     scores : np.ndarray, shape (top_k,)
         Similaridade de cosseno correspondente a cada índice.
     """
-    # Normaliza para usar produto escalar como similaridade de cosseno
     query_norm = query_vector / (np.linalg.norm(query_vector) + 1e-12)
     emb_norms = embeddings / (
         np.linalg.norm(embeddings, axis=1, keepdims=True) + 1e-12
     )
 
-    similarities = emb_norms @ query_norm  # shape (N,)
+    similarities = emb_norms @ query_norm
 
-    # Pega os top_k maiores sem ordenar tudo (O(N) + O(k log k))
     top_k = min(top_k, len(similarities))
     partial_idx = np.argpartition(-similarities, top_k - 1)[:top_k]
     order = np.argsort(-similarities[partial_idx])
@@ -66,8 +63,7 @@ def batch_exact_cosine_search(
     top_k: int = 5,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Mesma busca, mas para várias queries de uma vez (usado nos benchmarks
-    para gerar o ground truth de recall@k de forma mais rápida).
+    Busca exata para várias queries de uma vez.
 
     Returns
     -------
@@ -81,7 +77,7 @@ def batch_exact_cosine_search(
         np.linalg.norm(query_vectors, axis=1, keepdims=True) + 1e-12
     )
 
-    sims = q_norms @ emb_norms.T  # shape (n_queries, N)
+    sims = q_norms @ emb_norms.T
 
     top_k = min(top_k, embeddings.shape[0])
     idx_part = np.argpartition(-sims, top_k - 1, axis=1)[:, :top_k]

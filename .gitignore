@@ -1,0 +1,18 @@
+# Dados brutos do CMU (~127 MB) — gerados por download_dataset.py
+data/raw/
+
+# Artefatos gerados por outros membros do grupo
+artifacts/
+results/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+*:Zone.Identifier
+.vscode/
