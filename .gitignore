@@ -1,0 +1,15 @@
+# Cache do Python
+__pycache__/
+*.pyc
+
+# Ambiente virtual
+.venv/
+
+# Dados brutos do dataset (extraídos do tarball)
+data/MovieSummaries/
+
+# Base de dados real processada (mantida apenas local conforme solicitado)
+data/processed/movies.parquet
+
+# Queries locais de teste do Word2Vec
+artifacts/word2vec_queries.npy
