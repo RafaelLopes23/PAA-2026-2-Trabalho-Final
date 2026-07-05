@@ -1,0 +1,8 @@
+{
+    "model": "all-MiniLM-L6-v2",
+    "license": "Apache 2.0",
+    "total_vectors": 42201,
+    "dimension": 384,
+    "generation_time_seconds": 993.0693,
+    "memory_ram_mb": 61.82
+}
