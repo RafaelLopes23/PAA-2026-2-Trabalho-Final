@@ -356,7 +356,8 @@ As metricas usadas nos slides e na apresentacao ficam registradas nestes arquivo
 
 O PDF da disciplina limita o envio direto a `100 MB`. Por isso:
 
-- `data/raw/`, `artifacts/`, `results/` e `.cache/` nao devem entrar no pacote final sem planejamento;
+- `data/raw/`, artefatos binarios de `artifacts/`, `results/` e `.cache/` nao devem entrar no pacote final sem planejamento;
+- os JSONs pequenos de metricas em `artifacts/` ficam versionados porque documentam os numeros usados nos slides;
 - o ideal e enviar o codigo e os slides, e compartilhar os artefatos pesados por link quando necessario.
 
 ## Branch atual
