@@ -1,222 +1,363 @@
-# PAA 2026.2 — Sistema Q&A sobre Filmes
+# PAA 2026.2 - Sistema Q&A sobre Filmes
 
-Trabalho final da disciplina de Projeto e Análise de Algoritmos (PAA). O objetivo é desenvolver um sistema de perguntas e respostas sobre filmes, utilizando o [CMU Movie Summary Corpus](https://www.cs.cmu.edu/~ark/personas/), com busca semântica nas sinopses e formatação de respostas via LLM local.
+Trabalho final da disciplina de Projeto e Analise de Algoritmos. O sistema recebe uma pergunta em linguagem natural, recupera sinopses relevantes do **CMU Movie Summary Corpus** e devolve uma resposta formatada com um **LLM local**.
 
-## Visão geral da arquitetura
+## Visao geral
 
+Fluxo final da aplicacao:
+
+```text
+Pergunta do usuario
+        |
+        v
+Embedding da pergunta
+  |- Word2Vec Average
+  |- Sentence Embeddings
+        |
+        v
+Recuperacao
+  |- Busca exata por cosseno
+  |- HNSW aproximado
+        |
+        v
+Top-k sinopses
+        |
+        v
+Formatacao final com LLM local
+  |- Ollama + tinyllama
+  |- ou backend local via transformers
 ```
-Pergunta (linguagem natural)
-        │
-        ▼
-  Embedding da pergunta          ← Dyesi (Sentence) / Pedro (Word2Vec, opcional)
-        │
-        ▼
-  Busca por similaridade         ← Welder (cosseno exato) / Henrique (HNSW)
-        │
-        ▼
-  Top-k sinopses relevantes
-        │
-        ▼
-  LLM local formata resposta     ← Rafael (SmolLM, TinyLlama, Phi-3, Mistral, etc.)
-```
 
-O repositório está organizado em etapas encadeadas: **dados brutos → pré-processamento → embeddings → busca → Q&A**.
+## O que foi integrado
 
----
+Esta branch junta as partes do grupo na pratica:
 
-## Status do projeto
+- **Welder**: `download_dataset.py`, `preprocess.py`, `cosine_search.py` e contrato de dados em `movies.parquet`.
+- **Pedro**: Word2Vec Average adaptado para treinar diretamente sobre a base processada do Welder.
+- **Dyesi**: sentence embeddings com `all-MiniLM-L6-v2` e geracao da matriz `sentence_embeddings.npy`.
+- **Henrique**: HNSW, construcao do indice e scripts de benchmark.
+- **Rafael**: pipeline unificado, API FastAPI, carregamento unico dos recursos e integracao com LLM local.
 
-| Etapa | Responsável | Status | Entregável |
-|-------|-------------|--------|------------|
-| 1. Download e documentação do corpus | Welder | **Concluído** | `src/data/download_dataset.py`, `docs/DATASET.md` |
-| 2. Pré-processamento e limpeza | Welder | **Concluído** | `src/data/preprocess.py`, `data/processed/movies.parquet` |
-| 3. Busca exata por cosseno | Welder | **Concluído** | `src/search/cosine_search.py` |
-| 4. Sentence Embeddings | Dyesi | **Pendente** | `artifacts/sentence_embeddings.npy` |
-| 5. Word2Vec (opcional) | Pedro | **Pendente** | `artifacts/word2vec_embeddings.npy` |
-| 6. Índice HNSW + benchmarks | Henrique | **Concluído** | `src/search/hnsw_search.py`, `scripts/run_benchmarks.py` |
-| 7. Sistema Q&A com LLM | Rafael | **Pendente** | API/CLI de perguntas e respostas |
+## Adaptacoes feitas para integrar tudo
 
-### Onde estamos agora
+### Sobre a parte do Welder
 
-A **base de dados real** já foi processada (42.201 filmes com sinopse e título). A **busca exata** e o **HNSW** já foram integrados e testados com 42.201 vetores. O próximo passo crítico é a **Dyesi gerar os embeddings reais** das sinopses, alinhados linha a linha com o Parquet. Depois disso, o Rafael pode montar o fluxo de Q&A com o LLM local.
+- Mantive `movies.parquet` como base canonica do projeto.
+- Reaproveitei `exact_cosine_search()` como backend comum para `word2vec` e `sentence`.
+- O pipeline valida se o numero de linhas dos embeddings bate com o numero de filmes da base.
 
----
+### Sobre a parte do Pedro
 
-## O que já foi feito
+- O Word2Vec foi adaptado para consumir `data/processed/movies.parquet` em vez de um processamento bruto paralelo.
+- O treino usa `synopsis_tokens` do Welder quando disponivel.
+- Alem da matriz `word2vec_embeddings.npy`, o projeto salva `word2vec_embeddings.model.npz` para embedar queries depois.
+- O script final de geracao ficou em `scripts/build_word2vec_embeddings.py`.
 
-### Welder — Dados e busca exata
+### Sobre a parte da Dyesi
 
-- **Download do CMU Movie Summary Corpus** para `data/raw/MovieSummaries/` (via cópia local ou download oficial `.gz`).
-- **Pré-processamento** com join de sinopses + metadados, limpeza de markup Wikipedia, tokenização básica e filtros de qualidade.
-- **`movies.parquet`** com 42.201 filmes (`movie_id`, `title`, `synopsis`, `synopsis_tokens`, métricas de tamanho).
-- **`preprocess_stats.json`** com números para slides (tamanhos, contagens, médias, tempo).
-- **`cosine_search.py`** com busca exata genérica (Word2Vec ou Sentence Embeddings), complexidade **O(N × d)** por consulta.
+- O modulo de sentence embeddings foi integrado em `src/embeddings/sentence_embeddings.py`.
+- O script final ficou em `scripts/build_sentence_embeddings.py`.
+- Corrigi o fluxo para o output padrao ser `artifacts/sentence_embeddings.npy`.
+- O pipeline passou a reconhecer automaticamente `SentenceEmbeddingPipeline` como encoder de consulta.
 
-**Métricas do pré-processamento** (`data/processed/preprocess_stats.json`):
+### Sobre a parte do Henrique
 
-| Métrica | Valor |
-|---------|-------|
-| Sinopses brutas | 42.306 |
-| Metadados de filmes | 81.741 |
-| Filmes processados | 42.201 |
-| Tamanho bruto (plots + metadata) | ~88 MB |
-| Média de caracteres na sinopse | 1.779,9 |
-| Média de tokens na sinopse | 311,9 |
-| Tempo de pré-processamento | ~6,8 s |
-| Removidos (sem título) | 99 |
-| Removidos (sem sinopse) | 6 |
+- O indice HNSW continua vindo de `src/search/hnsw_search.py`.
+- O build final do indice usa os sentence embeddings reais da Dyesi.
+- O metodo `hnsw` na API usa o mesmo encoder de consulta do metodo `sentence`.
 
-### Henrique — HNSW e avaliação experimental
+### Sobre a minha parte
 
-- Implementação de **`HNSWSearch`** (build, query, save/load) em `src/search/hnsw_search.py`.
-- Scripts de **construção do índice** e **benchmarks** com grid search de parâmetros.
-- Comparação HNSW vs busca exata com **recall@k**, tempo de query e gráficos em `results/`.
-- Benchmarks já executados com **N = 42.201** e **d = 384** (embeddings de teste; substituir pelos reais da Dyesi).
+- Criei a camada comum em `src/pipeline.py`.
+- Criei a API em `src/api/main.py` e `src/api/schemas.py`.
+- Criei a integracao de LLM em `src/llm/tinyllama.py`.
+- A resposta final tenta usar um LLM local real; se a saida vier ruim ou fora do formato esperado, cai para uma resposta segura baseada nas sinopses recuperadas.
 
-Resultado observado com dados reais de contagem (embeddings aleatórios de validação):
+## Estrutura principal
 
-- Busca exata: ~0,48 ms/query
-- HNSW: ~0,04–0,36 ms/query (dependendo de `ef_search`)
-- Recall@5 do HNSW varia de ~0,05 a ~0,53 conforme parâmetros
-
-> Com embeddings reais e queries reais, os valores de recall e tempo devem ser reavaliados. Detalhes adicionais em [`README_henrique.md`](README_henrique.md).
-
----
-
-## Estrutura do repositório
-
-```
-PAA-2026-2-Trabalho-Final/
-├── README.md                      # Este arquivo
-├── README_henrique.md             # Detalhes da parte HNSW/benchmarks
-├── requirements.txt
-├── docs/
-│   └── DATASET.md                 # Documentação do CMU corpus
-├── src/
-│   ├── data/
-│   │   ├── download_dataset.py    # Copia/baixa corpus → data/raw/
-│   │   └── preprocess.py          # Gera movies.parquet + stats
-│   └── search/
-│       ├── cosine_search.py       # Busca exata O(N·d) — Welder
-│       └── hnsw_search.py         # Índice HNSW — Henrique
-├── scripts/
-│   ├── generate_fake_data.py      # Dados sintéticos (só para testes)
-│   ├── build_hnsw_index.py        # Constrói artifacts/hnsw_index.bin
-│   └── run_benchmarks.py          # Grid search + gráficos
+```text
+src/
+├── api/
+│   ├── main.py
+│   └── schemas.py
 ├── data/
-│   ├── raw/MovieSummaries/        # Corpus bruto (gitignored, ~127 MB)
-│   └── processed/
-│       ├── movies.parquet         # Base processada (42.201 filmes)
-│       ├── movies.csv             # Versão CSV opcional
-│       └── preprocess_stats.json  # Métricas para slides
-├── artifacts/                     # Embeddings e índice (gitignored)
-└── results/                       # Benchmarks e gráficos (gitignored)
+│   ├── download_dataset.py
+│   └── preprocess.py
+├── embeddings/
+│   ├── sentence_embeddings.py
+│   └── word2vec_average.py
+├── llm/
+│   └── tinyllama.py
+├── pipeline.py
+└── search/
+    ├── cosine_search.py
+    └── hnsw_search.py
 ```
 
----
+## Ambiente recomendado
 
-## Como executar
+O projeto foi testado nesta integracao com:
 
-### 1. Instalar dependências
+- Python em `venv`
+- `sentence-transformers`
+- `torch` CPU-only
+- `FastAPI`
+- `hnswlib`
+
+Para a sua maquina (`Ryzen 7 5700X` + `RX 6600 8 GB`), a melhor opcao de execucao local ficou:
+
+1. usar `sentence-transformers` para os embeddings;
+2. usar `TinyLlama` via `Ollama`;
+3. manter os caches dentro do proprio projeto para poder rodar de novo sem depender de internet.
+
+## Passo a passo completo
+
+### 1. Criar ambiente virtual
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+### 2. Instalar PyTorch CPU-only
+
+Isso evita puxar o pacote CUDA gigante do PyPI.
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+```
+
+### 3. Instalar o resto das dependencias
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Preparar dados (Welder)
+### 4. Preparar o dataset
+
+Se a base ainda nao estiver pronta:
 
 ```bash
-# Copia corpus para data/raw/ e gera docs/DATASET.md
-python3 -m src.data.download_dataset --include-optional
-
-# Gera movies.parquet e preprocess_stats.json
-python3 -m src.data.preprocess
+python -m src.data.download_dataset --include-optional
+python -m src.data.preprocess --also-csv
 ```
 
-> `data/raw/` não é versionado no git. Quem clonar o repositório precisa rodar o passo acima (ou apontar `--source` para o diretório local do corpus).
+### 5. Gerar Word2Vec Average
 
-### 3. Gerar embeddings (Dyesi — pendente)
-
-A Dyesi deve produzir `artifacts/sentence_embeddings.npy` com shape `(42201, d)`, onde a **linha i** corresponde à **linha i** de `movies.parquet`.
-
-Opcionalmente, queries de teste em `artifacts/fake_queries.npy` com shape `(n_queries, d)`.
-
-### 4. Construir índice e rodar benchmarks (Henrique)
+Execucao completa:
 
 ```bash
-python3 scripts/build_hnsw_index.py
-python3 scripts/run_benchmarks.py --top_k 5
+python scripts/build_word2vec_embeddings.py
 ```
 
-Saídas em `results/benchmark_results.csv` e `results/*.png`.
+Arquivos gerados:
 
-### 5. Dados sintéticos (apenas para testes isolados)
+- `artifacts/word2vec_embeddings.npy`
+- `artifacts/word2vec_embeddings.model.npz`
+- `artifacts/word2vec_metrics.json`
+
+Metricas obtidas nesta integracao:
+
+- `42201` filmes
+- treino em `280.166 s`
+- geracao da matriz em `2.3753 s`
+- matriz final `42201 x 100`
+
+### 6. Gerar sentence embeddings
 
 ```bash
-python3 scripts/generate_fake_data.py --n 5000 --dim 384
+python scripts/build_sentence_embeddings.py
 ```
 
-Use somente se ainda não houver `movies.parquet` real ou embeddings da Dyesi.
+Arquivos gerados:
 
----
+- `artifacts/sentence_embeddings.npy`
+- `artifacts/sentence_embeddings_stats.json`
 
-## Contrato de dados
+Metricas registradas nesta integracao:
 
-### `movies.parquet`
+- modelo `all-MiniLM-L6-v2`
+- `42201` vetores
+- dimensao `384`
+- geracao em `993.0693 s`
 
-| Coluna | Tipo | Descrição |
-|--------|------|-----------|
-| `movie_id` | int64 | Wikipedia movie ID (CMU) |
-| `title` | str | Título do filme |
-| `synopsis` | str | Sinopse limpa (texto para embeddings) |
-| `synopsis_tokens` | str | Tokens separados por espaço (Word2Vec) |
-| `synopsis_char_len` | int | Comprimento em caracteres |
-| `synopsis_token_len` | int | Comprimento em tokens |
+### 7. Construir o indice HNSW
 
-### Alinhamento embeddings ↔ Parquet
-
-```
-movies.parquet[i]  ↔  sentence_embeddings.npy[i]  ↔  word2vec_embeddings.npy[i]
+```bash
+python scripts/build_hnsw_index.py --embeddings artifacts/sentence_embeddings.npy
 ```
 
-A ordem das linhas é preservada pelo `preprocess.py` e **não deve ser alterada** ao gerar embeddings.
+Metadados desta integracao:
 
-### Interface de busca (`cosine_search.py`)
+- `42201` elementos
+- `dim = 384`
+- `M = 16`
+- `ef_construction = 200`
+- `ef_search = 100`
+- build em `2.7475 s`
 
-```python
-indices, scores = exact_cosine_search(query_vector, embeddings, top_k=5)
-indices, scores = batch_exact_cosine_search(query_vectors, embeddings, top_k=5)
+### 8. Configurar o cache dos modelos
+
+```bash
+export HF_HOME=$(pwd)/.cache/huggingface
+export PAA_HF_LOCAL_ONLY=1
 ```
 
-Genérica para qualquer dimensão `d` (Word2Vec, Sentence Embeddings, etc.).
+### 9. Instalar o Ollama localmente no projeto
 
----
+Sem `sudo`, usando os mesmos binarios oficiais que funcionaram nesta integracao:
 
-## Análise de complexidade
+```bash
+bash scripts/install_local_ollama.sh
+```
 
-| Etapa | Complexidade | Medição empírica (N≈42k) |
-|-------|-------------|--------------------------|
-| Pré-processamento | O(P · L) | ~6,8 s |
-| Busca exata (1 query) | O(N · d) | ~0,48 ms (d=384) |
-| Busca exata (50 queries) | O(Q · N · d) | ~24 ms |
-| Build HNSW | O(N log N) | ~2–24 s (varia com M) |
-| Query HNSW | O(log N) aprox. | ~0,04–0,36 ms |
+### 10. Subir o servidor local do Ollama
 
-O ganho do HNSW sobre busca exata depende de N, d e dos parâmetros (`M`, `ef_search`). Para N pequeno, a busca exata vetorizada com NumPy pode ser competitiva ou mais rápida — isso é esperado e vale documentar nos slides.
+Em um terminal:
 
----
+```bash
+bash scripts/start_local_ollama.sh
+```
 
-## Próximos passos
+### 11. Baixar o modelo TinyLlama
 
-1. **Dyesi** — gerar `artifacts/sentence_embeddings.npy` real a partir das sinopses.
-2. **Pedro** *(opcional)* — gerar `artifacts/word2vec_embeddings.npy` usando `synopsis_tokens`.
-3. **Henrique** — re-rodar benchmarks com embeddings e queries reais.
-4. **Rafael** — integrar retrieval + LLM local no sistema Q&A final.
+Em outro terminal:
 
----
+```bash
+bash scripts/pull_tinyllama.sh
+```
 
-## Referências
+Para confirmar:
 
-- [CMU Movie Summary Corpus](https://www.cs.cmu.edu/~ark/personas/)
-- Bamman, O'Connor & Smith, *Learning Latent Personas of Film Characters*, ACL 2013
-- Documentação do dataset: [`docs/DATASET.md`](docs/DATASET.md)
+```bash
+HOME=$(pwd) OLLAMA_MODELS=$(pwd)/.ollama/models OLLAMA_HOST=127.0.0.1:11434 ./.local/ollama/bin/ollama list
+```
+
+### 12. Escolher o backend do LLM
+
+#### Opcao A: Ollama
+
+Foi a opcao validada de ponta a ponta nesta branch:
+
+```bash
+export PAA_LLM_BACKEND=ollama
+export PAA_LLM_MODEL=tinyllama
+export PAA_LLM_ENDPOINT=http://127.0.0.1:11434/api/generate
+export PAA_LLM_ENABLED=1
+```
+
+#### Opcao B: transformers local
+
+Tambem funciona, mas ficou mais pesada na pratica:
+
+```bash
+export PAA_LLM_BACKEND=transformers
+export PAA_LLM_TRANSFORMERS_MODEL=TinyLlama/TinyLlama-1.1B-Chat-v1.0
+export PAA_LLM_ENABLED=1
+```
+
+Observacoes:
+
+- na primeira execucao, o projeto baixa os pesos do modelo;
+- nessa configuracao, o download do TinyLlama ficou em torno de `2.2 GB`;
+- depois do primeiro download, os arquivos ficam no cache.
+
+### 13. Subir a API
+
+```bash
+uvicorn src.api.main:app --host 127.0.0.1 --port 8000
+```
+
+## Endpoints
+
+- `GET /health`
+- `GET /methods`
+- `POST /query`
+
+### Exemplo de health
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+### Exemplo de methods
+
+```bash
+curl http://127.0.0.1:8000/methods
+```
+
+### Exemplo de query
+
+```bash
+curl -X POST http://127.0.0.1:8000/query \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "Former dream architect Dom Cobb infiltrates the subconscious of targets while dreaming.",
+    "method": "hnsw",
+    "top_k": 3
+  }'
+```
+
+## Metodos disponiveis
+
+- `word2vec`: busca exata por cosseno sobre `word2vec_embeddings.npy`
+- `sentence`: busca exata por cosseno sobre `sentence_embeddings.npy`
+- `hnsw`: busca aproximada HNSW sobre os sentence embeddings
+- `cosine`: alias para a melhor busca exata disponivel no momento
+
+## Como a resposta final funciona
+
+O pipeline faz:
+
+1. embed da pergunta;
+2. recuperacao dos filmes mais proximos;
+3. envio do contexto recuperado para o LLM local;
+4. validacao do formato da resposta do LLM;
+5. fallback seguro se o modelo pequeno responder mal.
+
+Esse fallback foi mantido de proposito para a resposta final nao quebrar ou inventar informacoes caso o TinyLlama produza texto ruim.
+
+## Resultado da validacao desta integracao
+
+Nesta branch, eu validei:
+
+- `word2vec`, `sentence`, `hnsw` e `cosine` aparecem em `/methods`;
+- `GET /health` respondeu `200`;
+- `GET /methods` respondeu `200`;
+- `POST /query` respondeu `200`;
+- o `TinyLlama` via `Ollama` carregou e executou;
+- o modelo `tinyllama:latest` ficou disponivel localmente no `ollama list`;
+- quando a saida do TinyLlama veio com placeholders ou formato ruim, o sistema caiu para a resposta segura automaticamente;
+- com `HF_HOME` local e `PAA_HF_LOCAL_ONLY=1`, os sentence embeddings funcionaram sem depender de novas requisicoes externas.
+
+## Benchmarks e complexidade
+
+- preprocessamento: custo dominado por leitura e tokenizacao
+- busca exata por cosseno: aproximadamente `O(Nd)` por consulta
+- HNSW: construcao aproximada `O(N log N)` e busca aproximada `O(log N)` na pratica
+- Word2Vec Average: custo de treino depende do corpus, janela e numero de negativas
+
+Os scripts do Henrique continuam disponiveis:
+
+```bash
+python scripts/run_benchmarks.py --top_k 5
+```
+
+## Observacoes de empacotamento
+
+O PDF da disciplina limita o envio direto a `100 MB`. Por isso:
+
+- `data/raw/`, `artifacts/`, `results/` e `.cache/` nao devem entrar no pacote final sem planejamento;
+- o ideal e enviar o codigo e os slides, e compartilhar os artefatos pesados por link quando necessario.
+
+## Branch atual
+
+Esta integracao foi montada na branch:
+
+```bash
+RafaelLopes23-integracao
+```
+
+## Material para a apresentacao
+
+As respostas detalhadas para os topicos do PDF e as sugestoes de demonstracao ficaram em [docs/APRESENTACAO.md](/home/rafael/PAA-2026-2-Trabalho-Final/docs/APRESENTACAO.md).

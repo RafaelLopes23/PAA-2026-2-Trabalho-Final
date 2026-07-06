@@ -9,6 +9,9 @@ results/
 __pycache__/
 *.py[cod]
 *.egg-info/
+.cache/
+.ollama/
+.local/ollama/
 .venv/
 venv/
 

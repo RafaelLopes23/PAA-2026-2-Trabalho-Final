@@ -1,5 +1,8 @@
+fastapi
 hnswlib
+matplotlib
 numpy
 pandas
-matplotlib
 pyarrow
+sentence-transformers
+uvicorn
