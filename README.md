@@ -66,11 +66,11 @@ Esta branch junta as partes do grupo na pratica:
 - O build final do indice usa os sentence embeddings reais da Dyesi.
 - O metodo `hnsw` na API usa o mesmo encoder de consulta do metodo `sentence`.
 
-### Sobre a minha parte
+### Sobre parte do Rafael
 
-- Criei a camada comum em `src/pipeline.py`.
-- Criei a API em `src/api/main.py` e `src/api/schemas.py`.
-- Criei a integracao de LLM em `src/llm/tinyllama.py`.
+- A camada comum em `src/pipeline.py`.
+- A API em `src/api/main.py` e `src/api/schemas.py`.
+- A integracao de LLM em `src/llm/tinyllama.py`.
 - A resposta final tenta usar um LLM local real; se a saida vier ruim ou fora do formato esperado, cai para uma resposta segura baseada nas sinopses recuperadas.
 
 ## Estrutura principal
@@ -104,7 +104,7 @@ O projeto foi testado nesta integracao com:
 - `FastAPI`
 - `hnswlib`
 
-Para a sua maquina (`Ryzen 7 5700X` + `RX 6600 8 GB`), a melhor opcao de execucao local ficou:
+Para a maquina (`Ryzen 7 5700X` + `RX 6600 8 GB`), a melhor opcao de execucao local ficou:
 
 1. usar `sentence-transformers` para os embeddings;
 2. usar `TinyLlama` via `Ollama`;
@@ -356,8 +356,4 @@ Esta integracao foi montada na branch:
 
 ```bash
 RafaelLopes23-integracao
-```
-
-## Material para a apresentacao
-
-As respostas detalhadas para os topicos do PDF e as sugestoes de demonstracao ficaram em [docs/APRESENTACAO.md](/home/rafael/PAA-2026-2-Trabalho-Final/docs/APRESENTACAO.md).
+``'
