@@ -343,6 +343,15 @@ Os scripts do Henrique continuam disponiveis:
 python scripts/run_benchmarks.py --top_k 5
 ```
 
+## Arquivos de metricas
+
+As metricas usadas nos slides e na apresentacao ficam registradas nestes arquivos:
+
+- `data/processed/preprocess_stats.json`: tamanho bruto/processado da base, quantidade de filmes, media de caracteres/tokens por sinopse e tempo de pre-processamento.
+- `artifacts/word2vec_metrics.json`: tempo de tokenizacao, treino, vetorizacao, dimensao dos vetores, tamanho dos arquivos e tempo medio de consulta do Word2Vec Average.
+- `artifacts/sentence_embeddings_stats.json`: modelo usado, licenca, quantidade de vetores, dimensao, tempo de geracao e memoria aproximada dos sentence embeddings.
+- `artifacts/hnsw_index.bin.meta.json`: dimensao, quantidade de itens indexados, tempo de construcao e parametros `M`, `ef_construction`, `ef_search` e `space`.
+
 ## Observacoes de empacotamento
 
 O PDF da disciplina limita o envio direto a `100 MB`. Por isso:
@@ -356,4 +365,4 @@ Esta integracao foi montada na branch:
 
 ```bash
 RafaelLopes23-integracao
-``'
+```

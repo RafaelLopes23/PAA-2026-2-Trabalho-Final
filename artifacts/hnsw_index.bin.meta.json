@@ -1,7 +1,7 @@
 {
   "dim": 384,
-  "n_elements": 50000,
-  "build_time_seconds": 9.083608129999448,
+  "n_elements": 42201,
+  "build_time_seconds": 2.7474579160002577,
   "params": {
     "M": 16,
     "ef_construction": 200,

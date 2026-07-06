@@ -377,6 +377,17 @@ Para o escopo da disciplina, os recursos foram suficientes para uma demonstracao
 - geracao dos sentence embeddings: `993.0693 s`
 - construcao do indice HNSW: `2.7475 s`
 
+### Onde essas metricas estao documentadas
+
+- `data/processed/preprocess_stats.json`:
+  contem as estatisticas da base bruta e processada, incluindo tamanho dos arquivos, numero de filmes, media das sinopses e tempo de pre-processamento.
+- `artifacts/word2vec_metrics.json`:
+  contem as metricas do Word2Vec Average, incluindo tempo de treino, tempo de vetorizacao, dimensao, tamanho dos artefatos e tempo medio de consulta.
+- `artifacts/sentence_embeddings_stats.json`:
+  contem as metricas dos sentence embeddings, incluindo modelo, licenca, dimensao, numero de vetores, tempo de geracao e memoria aproximada.
+- `artifacts/hnsw_index.bin.meta.json`:
+  contem as metricas e parametros do indice HNSW, incluindo tempo de construcao, dimensao, numero de elementos, `M`, `ef_construction` e `ef_search`.
+
 ### Tempo de consulta
 
 Nos testes desta integracao:

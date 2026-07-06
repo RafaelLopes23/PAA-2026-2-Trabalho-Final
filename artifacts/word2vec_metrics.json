@@ -1,0 +1,16 @@
+{
+  "dataset": "data/processed/movies.parquet",
+  "n_movies": 42201,
+  "vocab_size": 5000,
+  "embedding_dim": 100,
+  "tokenize_seconds": 1.2962,
+  "train_seconds": 280.166,
+  "vectorize_seconds": 2.3753,
+  "embeddings_shape": [
+    42201,
+    100
+  ],
+  "embeddings_size_mb": 16.0985,
+  "model_size_mb": 1.7887,
+  "avg_query_time_ms": 5.2977
+}
