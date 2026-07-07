@@ -30,13 +30,34 @@ def _get_pipeline(request: Request) -> QueryPipeline:
     return request.app.state.pipeline
 
 
+from fastapi.responses import HTMLResponse
+
+
 @app.get("/", response_model=MethodsResponse)
-def root(request: Request) -> MethodsResponse:
+def root(request: Request) -> HTMLResponse | MethodsResponse:
+    # Se a requisição vier de um navegador (solicitando HTML), serve a interface gráfica
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept:
+        static_index = os.path.join(os.path.dirname(__file__), "static/index.html")
+        if os.path.exists(static_index):
+            with open(static_index, "r", encoding="utf-8") as f:
+                return HTMLResponse(content=f.read())
+
     pipeline = _get_pipeline(request)
     return MethodsResponse(
         available_methods=pipeline.available_methods(),
         methods=pipeline.methods_payload(),
     )
+
+
+@app.get("/gui", response_class=HTMLResponse)
+def gui() -> HTMLResponse:
+    """Serve a interface gráfica de busca semântica."""
+    static_index = os.path.join(os.path.dirname(__file__), "static/index.html")
+    if not os.path.exists(static_index):
+        raise HTTPException(status_code=404, detail="Interface gráfica não encontrada.")
+    with open(static_index, "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read())
 
 
 @app.get("/health", response_model=HealthResponse)

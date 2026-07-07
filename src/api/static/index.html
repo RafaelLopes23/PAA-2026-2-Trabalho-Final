@@ -1,0 +1,1705 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Busca Semântica de Filmes - Cine QA</title>
+
+    <!-- Google Fonts: Julius Sans One for thin, wide Art Deco cinematic headers, Inter for premium modern body and controls -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Julius+Sans+One&family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        /* Vintage Cinema Color Palette */
+        --bg-dark: #ede9e6; /* Warm Ivory / Cream Sand */
+        --bg-card: #faf6f3; /* Soft Linen White */
+        --bg-card-hover: #f2ece7; /* Slightly Aged Paper */
+        --border-color: #c9996b; /* Classic Brass / Gold */
+        --border-hover: #5c4f4a; /* Charcoal Sepia */
+
+        --text-primary: #5c4f4a; /* Rich Charcoal Brown */
+        --text-secondary: #7a6b65; /* Muted Charcoal */
+        --text-muted: #9e918b; /* Faded Brass Gray */
+
+        /* Accents */
+        --color-gold: #c9996b; /* Film Gold / Brass */
+        --color-sage: #5c766d; /* Celluloid Teal / Sage */
+        --color-sage-light: rgba(92, 118, 109, 0.08);
+
+        /* Fonts (Julius Sans One for Art Deco Titles + Inter for UI) */
+        --font-display:
+          "Julius Sans One", sans-serif; /* Thin, wide, elegant Roman Art Deco caps */
+        --font-sans:
+          "Inter", sans-serif; /* Premium modern UI controls & body text */
+
+        /* Shadows & Transitions */
+        --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        --card-shadow: 0 4px 15px rgba(92, 79, 74, 0.08);
+        --card-shadow-hover: 0 8px 25px rgba(92, 79, 74, 0.16);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: var(--font-sans);
+        background-color: var(--bg-dark);
+        color: var(--text-primary);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow-x: hidden;
+        letter-spacing: 0.2px;
+
+        /* Subtle film reel texture simulation */
+        background-image:
+          radial-gradient(rgba(92, 79, 74, 0.03) 1.5px, transparent 0),
+          radial-gradient(rgba(92, 79, 74, 0.03) 1.5px, transparent 0);
+        background-size: 32px 32px;
+        background-position:
+          0 0,
+          16px 16px;
+        background-attachment: fixed;
+      }
+
+      /* Container Layout */
+      .app-container {
+        max-width: 1250px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 2.5rem 1.5rem;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2.5rem;
+      }
+
+      /* Header (Classic Hollywood Cinema Marquee) */
+      header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+        padding-bottom: 2rem;
+        border-bottom: 2px solid var(--border-color);
+        position: relative;
+      }
+
+      /* Decorative thin line under the border to make it double */
+      header::after {
+        content: "";
+        position: absolute;
+        bottom: -5px;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background-color: var(--border-color);
+      }
+
+      @media (min-width: 768px) {
+        header {
+          flex-direction: row;
+          justify-content: space-between;
+          align-items: flex-end;
+        }
+      }
+
+      .logo-section {
+        display: flex;
+        align-items: center;
+        gap: 1.25rem;
+      }
+
+      .logo-icon {
+        width: 3.5rem;
+        height: 3.5rem;
+        background: var(--text-primary);
+        border: 2px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: var(--card-shadow);
+      }
+
+      .logo-icon svg {
+        width: 2rem;
+        height: 2rem;
+        fill: var(--bg-dark);
+      }
+
+      .logo-title-group {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .logo-title {
+        font-family: var(--font-display);
+        font-size: 2.2rem;
+        font-weight: 400;
+        color: var(--text-primary);
+        letter-spacing: 6px;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      .logo-subtitle {
+        font-family: var(--font-sans);
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--color-gold);
+        text-transform: uppercase;
+        letter-spacing: 8px;
+        margin-top: 0.5rem;
+      }
+
+      .system-status {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 1.2rem;
+        border: 1px solid var(--border-color);
+        background: var(--bg-card);
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: var(--card-shadow);
+      }
+
+      /* Main Content Grid */
+      .main-grid {
+        display: grid;
+        grid-template-columns: 310px 1fr;
+        gap: 2.5rem;
+        align-items: start;
+      }
+
+      @media (max-width: 992px) {
+        .main-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Left Side: Settings Panel */
+      .panel {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        padding: 1.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.75rem;
+        box-shadow: var(--card-shadow);
+      }
+
+      .panel-title {
+        font-family: var(--font-display);
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        border-bottom: 1px solid rgba(201, 153, 107, 0.4);
+        padding-bottom: 0.75rem;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+      }
+
+      .panel-title svg {
+        width: 1.25rem;
+        height: 1.25rem;
+        stroke: var(--text-primary);
+        fill: none;
+        stroke-width: 2.5;
+      }
+
+      .setting-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+      }
+
+      .setting-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: var(--text-primary);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .setting-label .value-indicator {
+        color: var(--color-gold);
+        font-weight: 800;
+        font-size: 1.05rem;
+      }
+
+      /* Search Methods selector */
+      .method-selector {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .method-option {
+        background: var(--bg-dark);
+        border: 1px solid var(--border-color);
+        padding: 0.9rem 1.1rem;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        transition: var(--transition-smooth);
+      }
+
+      .method-option:hover:not(.disabled) {
+        background: var(--bg-card-hover);
+        border-color: var(--border-hover);
+      }
+
+      .method-option.active {
+        background: var(--bg-card);
+        border: 2px solid var(--text-primary);
+        box-shadow: var(--card-shadow);
+      }
+
+      .method-option.disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        background: rgba(0, 0, 0, 0.05);
+        border-color: var(--text-muted);
+      }
+
+      .method-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .method-name {
+        font-size: 0.85rem;
+        font-weight: 800;
+        letter-spacing: 1.5px;
+        color: var(--text-primary);
+        text-transform: uppercase;
+      }
+
+      /* Hide Disponivel Badge completely */
+      .method-badge.badge-available {
+        display: none !important;
+      }
+
+      .method-badge.badge-unavailable {
+        background: rgba(185, 28, 28, 0.06);
+        color: #b91c1c;
+        border: 1px solid rgba(185, 28, 28, 0.25);
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 0.15rem 0.45rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .method-desc {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+        line-height: 1.45;
+        font-weight: 400;
+        letter-spacing: 0.2px;
+      }
+
+      .method-reason {
+        font-size: 0.75rem;
+        color: #b91c1c;
+        margin-top: 0.2rem;
+        font-style: italic;
+        font-weight: 500;
+      }
+
+      /* Widescreen Slider Controls */
+      .slider-container {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+
+      input[type="range"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 6px;
+        background: var(--bg-dark);
+        border: 1px solid var(--border-color);
+        outline: none;
+      }
+
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 14px;
+        height: 20px;
+        background: var(--text-primary);
+        border: 1px solid var(--border-color);
+        cursor: pointer;
+        transition: var(--transition-smooth);
+      }
+
+      input[type="range"]::-webkit-slider-thumb:hover {
+        background: var(--color-gold);
+      }
+
+      /* Right Column: Search Area & Results */
+      .workspace {
+        display: flex;
+        flex-direction: column;
+        gap: 2.5rem;
+      }
+
+      /* Search Console */
+      .search-console {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        padding: 1.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        box-shadow: var(--card-shadow);
+      }
+
+      .search-box-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        width: 100%;
+        background: var(--bg-dark);
+        border: 1px solid var(--border-color);
+        padding: 0.25rem;
+        transition: var(--transition-smooth);
+      }
+
+      .search-box-wrapper:focus-within {
+        border-color: var(--text-primary);
+        box-shadow: 0 0 10px rgba(92, 79, 74, 0.1);
+      }
+
+      .search-input {
+        flex-grow: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        padding: 0.85rem 1rem;
+        font-size: 1.05rem;
+        font-family: var(--font-sans);
+        color: var(--text-primary);
+        font-weight: 400;
+        letter-spacing: 0.2px;
+      }
+
+      .search-input::placeholder {
+        color: var(--text-muted);
+        font-style: italic;
+      }
+
+      .search-btn {
+        background: var(--text-primary);
+        border: none;
+        padding: 0.85rem 2rem;
+        color: var(--bg-dark);
+        font-family: var(--font-display);
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: var(--transition-smooth);
+        text-transform: uppercase;
+        letter-spacing: 3px;
+      }
+
+      .search-btn:hover {
+        background: var(--color-gold);
+        color: var(--text-primary);
+      }
+
+      .search-btn svg {
+        width: 0.9rem;
+        height: 0.9rem;
+        stroke: currentColor;
+        stroke-width: 3;
+      }
+
+      .search-suggestions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+        padding-top: 0.5rem;
+        border-top: 1px dashed rgba(201, 153, 107, 0.4);
+      }
+
+      .suggestion-title {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-right: 0.5rem;
+      }
+
+      .suggestion-chip {
+        background: var(--bg-dark);
+        border: 1px solid var(--border-color);
+        padding: 0.4rem 0.9rem;
+        font-size: 0.8rem;
+        color: var(--text-primary);
+        cursor: pointer;
+        transition: var(--transition-smooth);
+        font-weight: 500;
+        letter-spacing: 0.5px;
+      }
+
+      .suggestion-chip:hover {
+        background: var(--bg-card-hover);
+        border-color: var(--border-hover);
+      }
+
+      /* Results / Answer Layout */
+      .results-section {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+      }
+
+      /* Section Heading */
+      .section-header {
+        font-family: var(--font-display);
+        font-size: 1.35rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid var(--border-color);
+        padding-bottom: 0.5rem;
+        letter-spacing: 4px;
+        text-transform: uppercase;
+      }
+
+      .results-info-badge {
+        font-family: var(--font-sans);
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        background: var(--bg-card);
+        padding: 0.3rem 0.9rem;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--card-shadow);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      /* Widescreen Film Reel Loader */
+      .loader-wrapper {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 5rem 2rem;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--card-shadow);
+        gap: 1.5rem;
+        text-align: center;
+      }
+
+      .radar-spinner {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        border: 6px double var(--bg-dark);
+        border-top-color: var(--text-primary);
+        border-bottom-color: var(--color-gold);
+        animation: spin 1s linear infinite;
+      }
+
+      .loader-text {
+        font-family: var(--font-display);
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+      }
+
+      .loader-subtext {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        animation: pulse-text 1.5s ease-in-out infinite;
+      }
+
+      /* AI Answer Card (Critic Review Style) */
+      .ai-answer-card {
+        display: none;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-left: 5px solid var(--color-gold);
+        padding: 2rem;
+        box-shadow: var(--card-shadow);
+        flex-direction: column;
+        gap: 1.25rem;
+        animation: fade-in 0.5s ease-out;
+      }
+
+      .ai-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid rgba(201, 153, 107, 0.4);
+        padding-bottom: 0.75rem;
+      }
+
+      .ai-title {
+        font-family: var(--font-display);
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+      }
+
+      .ai-title svg {
+        width: 1.5rem;
+        height: 1.5rem;
+        stroke: var(--color-gold);
+        fill: none;
+        stroke-width: 2.5;
+      }
+
+      .ai-backend-badge {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--color-sage);
+        background: var(--color-sage-light);
+        border: 1px solid var(--color-sage);
+        padding: 0.2rem 0.6rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .ai-content {
+        font-family: var(--font-sans);
+        font-size: 1rem;
+        line-height: 1.6;
+        color: var(--text-primary);
+        white-space: pre-wrap;
+        font-style: italic;
+      }
+
+      .ai-warnings {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding-top: 0.75rem;
+        border-top: 1px dashed var(--border-color);
+      }
+
+      .warning-item {
+        font-size: 0.75rem;
+        color: #b91c1c;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .warning-item svg {
+        width: 1rem;
+        height: 1rem;
+        stroke: currentColor;
+        flex-shrink: 0;
+      }
+
+      /* Movie Cards Grid (Styled like Widescreen Film Frames) */
+      .movies-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.75rem;
+      }
+
+      .movie-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        padding: 1.75rem;
+        display: flex;
+        gap: 1.75rem;
+        position: relative;
+        transition: var(--transition-smooth);
+        box-shadow: var(--card-shadow);
+        animation: card-appear 0.4s ease-out;
+      }
+
+      .movie-card:hover {
+        border-color: var(--border-hover);
+        background: var(--bg-card-hover);
+        box-shadow: var(--card-shadow-hover);
+        transform: translateY(-2px);
+      }
+
+      /* Celluloid Filmstrip Sprockets cover container */
+      .movie-cover {
+        width: 95px;
+        height: 135px;
+        background: var(--text-primary); /* Dark celluloid black */
+        border: 1px solid var(--border-color);
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 0.85rem 0.5rem;
+        position: relative;
+        box-shadow: 2px 2px 8px rgba(92, 79, 74, 0.15);
+      }
+
+      /* Film sprocket holes on left and right borders */
+      .movie-cover::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 4px;
+        width: 5px;
+        background-image: linear-gradient(
+          to bottom,
+          var(--bg-card) 50%,
+          transparent 50%
+        );
+        background-size: 100% 12px;
+        opacity: 0.8;
+        transition: var(--transition-smooth);
+      }
+
+      .movie-cover::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        right: 4px;
+        width: 5px;
+        background-image: linear-gradient(
+          to bottom,
+          var(--bg-card) 50%,
+          transparent 50%
+        );
+        background-size: 100% 12px;
+        opacity: 0.8;
+        transition: var(--transition-smooth);
+      }
+
+      /* Sync sprocket hole background on hover */
+      .movie-card:hover .movie-cover::before,
+      .movie-card:hover .movie-cover::after {
+        background-image: linear-gradient(
+          to bottom,
+          var(--bg-card-hover) 50%,
+          transparent 50%
+        );
+      }
+
+      .cover-rank {
+        position: relative;
+        z-index: 2;
+        font-family: var(--font-display);
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--bg-dark);
+        text-align: center;
+        line-height: 1;
+        letter-spacing: 1px;
+      }
+
+      .cover-icon {
+        position: relative;
+        z-index: 2;
+        align-self: center;
+        opacity: 0.75;
+      }
+
+      .cover-icon svg {
+        width: 1.75rem;
+        height: 1.75rem;
+        fill: var(--color-gold);
+      }
+
+      .cover-id {
+        position: relative;
+        z-index: 2;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--border-color);
+        text-align: center;
+        letter-spacing: 0.5px;
+      }
+
+      /* Movie Details */
+      .movie-info {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+      }
+
+      .movie-card-header {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 0.5rem;
+        border-bottom: 1px solid rgba(201, 153, 107, 0.3);
+        padding-bottom: 0.5rem;
+      }
+
+      @media (min-width: 576px) {
+        .movie-card-header {
+          flex-direction: row;
+          align-items: center;
+        }
+      }
+
+      .movie-title {
+        font-family: var(--font-display);
+        font-size: 1.35rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        letter-spacing: 3px;
+        text-transform: uppercase;
+      }
+
+      .score-container {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+
+      /* Widescreen Gauge */
+      .score-gauge-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+
+      .score-text {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--color-sage);
+        border: 1px solid var(--color-sage);
+        padding: 0.2rem 0.5rem;
+        background: var(--color-sage-light);
+        letter-spacing: 0.5px;
+      }
+
+      .score-bar-bg {
+        width: 70px;
+        height: 6px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-dark);
+      }
+
+      .score-bar-fill {
+        height: 100%;
+        background: var(--color-sage);
+        transition: width 0.8s ease-out;
+      }
+
+      .raw-score-label {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+      }
+
+      .movie-synopsis {
+        font-family: var(--font-sans);
+        font-size: 0.95rem;
+        line-height: 1.6;
+        color: var(--text-primary);
+        font-weight: 400;
+      }
+
+      /* Metrics / Timings (Film Strip Info Box) */
+      .metrics-card {
+        display: none;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        padding: 1.25rem 1.75rem;
+        box-shadow: var(--card-shadow);
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 1.5rem;
+        animation: fade-in 0.5s ease-out;
+      }
+
+      .metric-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        border-right: 1px dashed rgba(201, 153, 107, 0.4);
+        padding-right: 0.5rem;
+      }
+
+      .metric-item:last-child {
+        border-right: none;
+      }
+
+      .metric-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .metric-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .metric-value .ms-unit {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+      }
+
+      /* Empty/Initial state */
+      .empty-state {
+        background: var(--bg-card);
+        border: 1px dashed var(--border-color);
+        padding: 5rem 2rem;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.25rem;
+        box-shadow: var(--card-shadow);
+      }
+
+      .empty-icon {
+        width: 3.5rem;
+        height: 3.5rem;
+        border: 1px solid var(--border-color);
+        background: var(--bg-dark);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+      }
+
+      .empty-icon svg {
+        width: 1.75rem;
+        height: 1.75rem;
+        stroke: currentColor;
+        stroke-width: 1.5;
+      }
+
+      .empty-text {
+        font-family: var(--font-display);
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        letter-spacing: 3px;
+        text-transform: uppercase;
+      }
+
+      .empty-subtext {
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        max-width: 480px;
+        line-height: 1.55;
+      }
+
+      /* Animations */
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes pulse-warn {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+      @keyframes pulse-text {
+        0%,
+        100% {
+          color: var(--text-secondary);
+        }
+        50% {
+          color: var(--text-muted);
+        }
+      }
+      @keyframes fade-in {
+        from {
+          opacity: 0;
+          transform: translateY(4px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes card-appear {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Toast Notification */
+      .toast {
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        background: #b91c1c;
+        border: 1px solid #7f1d1d;
+        color: #fef2f2;
+        padding: 1rem 1.5rem;
+        box-shadow: var(--card-shadow);
+        font-size: 0.85rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        z-index: 1000;
+        transform: translateY(150%);
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .toast.show {
+        transform: translateY(0);
+      }
+
+      .toast svg {
+        width: 1.25rem;
+        height: 1.25rem;
+        stroke: currentColor;
+        stroke-width: 2.5;
+        flex-shrink: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-container">
+      <!-- Header -->
+      <header>
+        <div class="logo-section">
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24">
+              <path
+                d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"
+              />
+            </svg>
+          </div>
+          <div class="logo-title-group">
+            <h1 class="logo-title">Cine QA Semântico</h1>
+            <span class="logo-subtitle">Projetor de Consultas</span>
+          </div>
+        </div>
+        <div class="system-status">
+          <div
+            id="movies-count-badge"
+            class="status-badge"
+            style="display: none"
+          >
+            <svg
+              style="
+                width: 1rem;
+                height: 1rem;
+                stroke: var(--text-primary);
+                fill: none;
+                stroke-width: 2;
+                margin-right: 0.3rem;
+              "
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
+              />
+            </svg>
+            Catálogo: <span id="movies-count" style="margin-left: 2px">0</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Layout -->
+      <div class="main-grid">
+        <!-- Left Side: Config Panel -->
+        <aside class="panel">
+          <h2 class="panel-title">
+            <svg viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
+              />
+            </svg>
+            Projeção
+          </h2>
+
+          <!-- Method Selection -->
+          <div class="setting-group">
+            <span class="setting-label">Algoritmo & Busca</span>
+            <div id="method-options-list" class="method-selector">
+              <!-- HNSW (Default/Recommended) -->
+              <div class="method-option active" data-method="hnsw">
+                <div class="method-header">
+                  <span class="method-name">HNSW</span>
+                  <span class="method-badge badge-available"></span>
+                </div>
+                <span class="method-desc"
+                  >Busca aproximada hierárquica rápida (Sentence
+                  Embeddings).</span
+                >
+              </div>
+
+              <!-- Cosine (Best Exact) -->
+              <div class="method-option" data-method="cosine">
+                <div class="method-header">
+                  <span class="method-name">Cosseno</span>
+                  <span class="method-badge badge-available"></span>
+                </div>
+                <span class="method-desc"
+                  >Busca exata ideal. Prioriza Sentence Embeddings e cai para
+                  Word2Vec.</span
+                >
+              </div>
+
+              <!-- Sentence Embeddings -->
+              <div class="method-option" data-method="sentence">
+                <div class="method-header">
+                  <span class="method-name">Sentence-T</span>
+                  <span class="method-badge badge-available"></span>
+                </div>
+                <span class="method-desc"
+                  >Busca exata cosseno usando all-MiniLM-L6-v2 (384d).</span
+                >
+              </div>
+
+              <!-- Word2Vec -->
+              <div class="method-option" data-method="word2vec">
+                <div class="method-header">
+                  <span class="method-name">Word2Vec</span>
+                  <span class="method-badge badge-available"></span>
+                </div>
+                <span class="method-desc"
+                  >Busca exata cosseno usando Word2Vec treinado na base
+                  (100d).</span
+                >
+              </div>
+            </div>
+          </div>
+
+          <!-- Top K Slider -->
+          <div class="setting-group">
+            <div class="setting-label">
+              <span>Resultados (Top-K)</span>
+              <span id="top-k-val" class="value-indicator">5</span>
+            </div>
+            <div class="slider-container">
+              <input
+                type="range"
+                id="top-k-slider"
+                min="1"
+                max="20"
+                value="5"
+              />
+            </div>
+          </div>
+        </aside>
+
+        <!-- Right Side: Search area & results -->
+        <main class="workspace">
+          <!-- Search Console -->
+          <div class="search-console">
+            <form
+              id="search-form"
+              onsubmit="
+                event.preventDefault();
+                triggerSearch();
+              "
+              class="search-box-wrapper"
+            >
+              <input
+                type="text"
+                id="search-input"
+                class="search-input"
+                placeholder="Digite uma sinopse, tema ou pergunta sobre um filme..."
+                autocomplete="off"
+              />
+              <button type="submit" class="search-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                Buscar
+              </button>
+            </form>
+
+            <!-- Quick Suggestions -->
+            <div class="search-suggestions">
+              <span class="suggestion-title">Sugestões:</span>
+              <span
+                class="suggestion-chip"
+                onclick="
+                  fillAndSearch(
+                    'Um grupo de astronautas viaja através de um buraco negro no espaço.',
+                  )
+                "
+                >Buraco Negro</span
+              >
+              <span
+                class="suggestion-chip"
+                onclick="
+                  fillAndSearch(
+                    'Former dream architect Dom Cobb infiltrates the subconscious of targets.',
+                  )
+                "
+                >A Origem (Cobb)</span
+              >
+              <span
+                class="suggestion-chip"
+                onclick="
+                  fillAndSearch(
+                    'Comédia romântica de ficção científica onde duas pessoas tentam apagar as memórias um do outro.',
+                  )
+                "
+                >Brilho Eterno</span
+              >
+              <span
+                class="suggestion-chip"
+                onclick="
+                  fillAndSearch(
+                    'Brinquedos que ganham vida e passam por aventuras quando os donos não estão olhando.',
+                  )
+                "
+                >Toy Story</span
+              >
+            </div>
+          </div>
+
+          <!-- Response Stats Panel (Timings) -->
+          <div id="metrics-card" class="metrics-card">
+            <div class="metric-item">
+              <span class="metric-label">Método Ativo</span>
+              <span id="metric-method" class="metric-value">-</span>
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Vetorização</span>
+              <span id="metric-embedding" class="metric-value"
+                >0<span class="ms-unit">ms</span></span
+              >
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Recuperação</span>
+              <span id="metric-retrieval" class="metric-value"
+                >0<span class="ms-unit">ms</span></span
+              >
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">LLM (TinyLlama)</span>
+              <span id="metric-llm" class="metric-value"
+                >0<span class="ms-unit">ms</span></span
+              >
+            </div>
+            <div class="metric-item">
+              <span class="metric-label">Tempo Total</span>
+              <span
+                id="metric-total"
+                class="metric-value"
+                style="color: var(--color-gold)"
+                >0<span class="ms-unit">ms</span></span
+              >
+            </div>
+          </div>
+
+          <!-- Loader -->
+          <div id="loader" class="loader-wrapper">
+            <div class="radar-spinner"></div>
+            <div class="loader-text">
+              <span id="loader-title">Pesquisando no rolo de filme...</span>
+              <span id="loader-subtitle" class="loader-subtext"
+                >Indexando vetores semânticos...</span
+              >
+            </div>
+          </div>
+
+          <!-- Results Section -->
+          <div class="results-section">
+            <!-- AI Answer Card (Critic Review Style) -->
+            <div id="ai-answer-card" class="ai-answer-card">
+              <div class="ai-header">
+                <span class="ai-title">
+                  <svg viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
+                    />
+                  </svg>
+                  Resposta & Análise do Crítico
+                </span>
+                <span id="ai-backend" class="ai-backend-badge">TINYLLAMA</span>
+              </div>
+              <div id="ai-content" class="ai-content"></div>
+              <div
+                id="ai-warnings"
+                class="ai-warnings"
+                style="display: none"
+              ></div>
+            </div>
+
+            <!-- Results List Header -->
+            <div class="section-header">
+              <span>Rolo de Resultados</span>
+              <span id="results-count" class="results-info-badge"
+                >Mostrando 0 filmes</span
+              >
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" class="empty-state">
+              <div class="empty-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <span class="empty-text">Nenhuma projeção ativa</span>
+              <span class="empty-subtext"
+                >Escolha o algoritmo de busca na barra lateral, digite um tema
+                ou pergunta sobre um filme e clique em Buscar para exibir as
+                películas correspondentes.</span
+              >
+            </div>
+
+            <!-- Movie List -->
+            <div id="movies-grid" class="movies-grid"></div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <!-- Error Toast -->
+    <div id="toast" class="toast">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
+        />
+      </svg>
+      <span id="toast-message">Erro no processamento.</span>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+      const API_URL = window.location.origin; // Same host that serves the GUI
+      let activeMethod = "hnsw";
+      let availableMethods = [];
+      let methodsMetadata = {};
+
+      // Vintage gold/bronze/teal toned film frame gradients
+      const gradients = [
+        "linear-gradient(135deg, #C9996B 0%, #5C4F4A 100%)",
+        "linear-gradient(135deg, #7A6B65 0%, #5C4F4A 100%)",
+        "linear-gradient(135deg, #5C766D 0%, #3F524A 100%)",
+        "linear-gradient(135deg, #C9996B 0%, #5C766D 100%)",
+        "linear-gradient(135deg, #8C7870 0%, #5C4F4A 100%)",
+        "linear-gradient(135deg, #5C4F4A 0%, #3F3532 100%)",
+      ];
+
+      document.addEventListener("DOMContentLoaded", () => {
+        // Top K Slider Setup
+        const topKSlider = document.getElementById("top-k-slider");
+        const topKVal = document.getElementById("top-k-val");
+        topKSlider.addEventListener("input", (e) => {
+          topKVal.innerText = e.target.value;
+        });
+
+        // Initialize connection and metadata
+        checkSystemHealth();
+
+        // Setup interactive method selector
+        setupMethodSelector();
+      });
+
+      function setupMethodSelector() {
+        const options = document.querySelectorAll(".method-option");
+        options.forEach((option) => {
+          option.addEventListener("click", () => {
+            if (option.classList.contains("disabled")) return;
+
+            options.forEach((opt) => opt.classList.remove("active"));
+            option.classList.add("active");
+            activeMethod = option.dataset.method;
+          });
+        });
+      }
+
+      async function checkSystemHealth() {
+        const moviesCountBadge = document.getElementById("movies-count-badge");
+        const moviesCount = document.getElementById("movies-count");
+
+        try {
+          const response = await fetch(`${API_URL}/health`);
+          if (!response.ok) throw new Error("API degraded or offline");
+
+          const data = await response.json();
+
+          // Update movies count
+          if (data.movies_count) {
+            moviesCount.innerText = data.movies_count.toLocaleString("pt-BR");
+            moviesCountBadge.style.display = "inline-flex";
+          }
+
+          availableMethods = data.available_methods || [];
+          methodsMetadata = data.methods || {};
+
+          // Update methods in the sidebar visually
+          updateSidebarMethods();
+        } catch (err) {
+          console.error("System Health Check Failed:", err);
+          showToast("Falha na conexão com a API do projetor.");
+        }
+      }
+
+      function updateSidebarMethods() {
+        const methodOptions = document.querySelectorAll(".method-option");
+
+        methodOptions.forEach((option) => {
+          const methodName = option.dataset.method;
+          const meta = methodsMetadata[methodName];
+
+          const badge = option.querySelector(".method-badge");
+          const desc = option.querySelector(".method-desc");
+
+          // Remove previous reason if any
+          const existingReason = option.querySelector(".method-reason");
+          if (existingReason) existingReason.remove();
+
+          if (meta) {
+            if (meta.description) {
+              desc.innerText = meta.description;
+            }
+
+            if (meta.available) {
+              option.classList.remove("disabled");
+              if (badge) {
+                badge.className = "method-badge badge-available";
+                badge.innerText = "";
+              }
+            } else {
+              option.classList.add("disabled");
+              if (badge) {
+                badge.className = "method-badge badge-unavailable";
+                badge.innerText = "Ausente";
+              }
+
+              // Add reason detail
+              if (meta.reason) {
+                const reasonSpan = document.createElement("span");
+                reasonSpan.className = "method-reason";
+                reasonSpan.innerText = `Motivo: ${meta.reason}`;
+                option.appendChild(reasonSpan);
+              }
+
+              // If the currently selected method is disabled, switch to a valid one
+              if (activeMethod === methodName) {
+                option.classList.remove("active");
+                // Find another available method
+                const firstAvailable = Object.keys(methodsMetadata).find(
+                  (k) => methodsMetadata[k].available,
+                );
+                if (firstAvailable) {
+                  activeMethod = firstAvailable;
+                  const activeOpt = document.querySelector(
+                    `.method-option[data-method="${firstAvailable}"]`,
+                  );
+                  if (activeOpt) activeOpt.classList.add("active");
+                }
+              }
+            }
+          }
+        });
+      }
+
+      function fillAndSearch(text) {
+        document.getElementById("search-input").value = text;
+        triggerSearch();
+      }
+
+      async function triggerSearch() {
+        const question = document.getElementById("search-input").value.trim();
+        const topK = parseInt(document.getElementById("top-k-slider").value);
+
+        if (!question || question.length < 3) {
+          showToast("A pergunta deve conter no mínimo 3 caracteres.");
+          return;
+        }
+
+        // Hide old data, show loader
+        document.getElementById("empty-state").style.display = "none";
+        document.getElementById("movies-grid").style.display = "none";
+        document.getElementById("ai-answer-card").style.display = "none";
+        document.getElementById("metrics-card").style.display = "none";
+        document.getElementById("results-count").innerText = "Projetando...";
+
+        const loader = document.getElementById("loader");
+        const loaderSubtitle = document.getElementById("loader-subtitle");
+        loader.style.display = "flex";
+        loaderSubtitle.innerText =
+          "Carregando rolo de embeddings semânticos...";
+
+        const stages = [
+          "Localizando fotogramas similares no índice HNSW...",
+          "Calculando distâncias no espaço vetorial...",
+          "Enviando sinopses relevantes para a crítica da IA...",
+          "Imprimindo a análise final do crítico...",
+        ];
+        let stageIdx = 0;
+        const stageInterval = setInterval(() => {
+          if (stageIdx < stages.length) {
+            loaderSubtitle.innerText = stages[stageIdx++];
+          }
+        }, 1000);
+
+        try {
+          const response = await fetch(`${API_URL}/query`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              question: question,
+              method: activeMethod,
+              top_k: topK,
+            }),
+          });
+
+          clearInterval(stageInterval);
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            const msg =
+              errorData.detail?.message || "Falha ao processar consulta.";
+            throw new Error(msg);
+          }
+
+          const result = await response.json();
+          renderResults(result);
+        } catch (err) {
+          clearInterval(stageInterval);
+          console.error(err);
+          loader.style.display = "none";
+          document.getElementById("empty-state").style.display = "flex";
+          showToast(err.message || "Erro ao conectar com a API.");
+        }
+      }
+
+      function getGradientIndex(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+          hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        return Math.abs(hash) % gradients.length;
+      }
+
+      function renderResults(data) {
+        const loader = document.getElementById("loader");
+        loader.style.display = "none";
+
+        // Render Metrics
+        const metricsCard = document.getElementById("metrics-card");
+        document.getElementById("metric-method").innerText =
+          data.resolved_method.toUpperCase();
+
+        const embeddingMs = data.timings_ms?.query_embedding || 0;
+        const retrievalMs = data.timings_ms?.retrieval || 0;
+        const llmMs = data.timings_ms?.llm || 0;
+        const totalMs = data.timings_ms?.total || 0;
+
+        document.getElementById("metric-embedding").innerHTML =
+          `${embeddingMs.toFixed(1)}<span class="ms-unit">ms</span>`;
+        document.getElementById("metric-retrieval").innerHTML =
+          `${retrievalMs.toFixed(1)}<span class="ms-unit">ms</span>`;
+        document.getElementById("metric-llm").innerHTML =
+          `${llmMs.toFixed(1)}<span class="ms-unit">ms</span>`;
+        document.getElementById("metric-total").innerHTML =
+          `${totalMs.toFixed(0)}<span class="ms-unit">ms</span>`;
+        metricsCard.style.display = "grid";
+
+        // Render AI Answer (Critic Review Style)
+        const aiAnswerCard = document.getElementById("ai-answer-card");
+        const aiContent = document.getElementById("ai-content");
+        const aiBackend = document.getElementById("ai-backend");
+        const aiWarnings = document.getElementById("ai-warnings");
+
+        if (data.answer) {
+          aiContent.innerHTML = "";
+          aiBackend.innerText = `CRÍTICO: ${(data.llm_backend || "TINYLLAMA").toUpperCase()}`;
+
+          // Show warnings if any
+          if (data.warnings && data.warnings.length > 0) {
+            aiWarnings.innerHTML = data.warnings
+              .map(
+                (w) => `
+                        <div class="warning-item">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="stroke-width: 2.5; stroke: currentColor;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <span>${w}</span>
+                        </div>
+                    `,
+              )
+              .join("");
+            aiWarnings.style.display = "flex";
+          } else {
+            aiWarnings.style.display = "none";
+          }
+
+          aiAnswerCard.style.display = "flex";
+
+          // Typewriter effect simulation for review content
+          typeWriterEffect(aiContent, data.answer);
+        } else {
+          aiAnswerCard.style.display = "none";
+        }
+
+        // Render Movie List
+        const moviesGrid = document.getElementById("movies-grid");
+        moviesGrid.innerHTML = "";
+
+        const resultsCount = document.getElementById("results-count");
+        const count = data.results ? data.results.length : 0;
+        resultsCount.innerText = `${count} filme${count !== 1 ? "s" : ""} localizado${count !== 1 ? "s" : ""}`;
+
+        if (count === 0) {
+          document.getElementById("empty-state").style.display = "flex";
+          document
+            .getElementById("empty-state")
+            .querySelector(".empty-text").innerText = "Nenhum filme localizado";
+          return;
+        }
+
+        data.results.forEach((movie) => {
+          const card = document.createElement("div");
+          card.className = "movie-card";
+
+          const gradientIdx = getGradientIndex(movie.title);
+          const coverGradient = gradients[gradientIdx];
+
+          let pct = Math.max(0, Math.min(100, Math.round(movie.score * 100)));
+
+          card.innerHTML = `
+                    <div class="movie-cover" style="background: ${coverGradient};">
+                        <span class="cover-rank">#${movie.rank}</span>
+                        <div class="cover-icon">
+                            <svg viewBox="0 0 24 24">
+                                <path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/>
+                            </svg>
+                        </div>
+                        <span class="cover-id">ID ${movie.movie_id}</span>
+                    </div>
+                    <div class="movie-info">
+                        <div class="movie-card-header">
+                            <h3 class="movie-title">${movie.title}</h3>
+                            <div class="score-container">
+                                <div class="score-gauge-wrapper">
+                                    <span class="score-text">${pct}% SIMIL.</span>
+                                    <div class="score-bar-bg">
+                                        <div class="score-bar-fill" style="width: ${pct}%"></div>
+                                    </div>
+                                </div>
+                                <span class="raw-score-label">score: ${movie.score.toFixed(4)}</span>
+                            </div>
+                        </div>
+                        <p class="movie-synopsis">${movie.synopsis_preview}</p>
+                    </div>
+                `;
+
+          moviesGrid.appendChild(card);
+        });
+
+        moviesGrid.style.display = "grid";
+      }
+
+      function typeWriterEffect(element, text) {
+        let i = 0;
+        const speed = 6; // ms per character
+        element.innerHTML = "";
+
+        function type() {
+          if (i < text.length) {
+            element.innerHTML += text.charAt(i);
+            i++;
+            setTimeout(type, speed);
+          }
+        }
+        type();
+      }
+
+      function showToast(message) {
+        const toast = document.getElementById("toast");
+        document.getElementById("toast-message").innerText = message;
+        toast.classList.add("show");
+
+        setTimeout(() => {
+          toast.classList.remove("show");
+        }, 4000);
+      }
+    </script>
+  </body>
+</html>

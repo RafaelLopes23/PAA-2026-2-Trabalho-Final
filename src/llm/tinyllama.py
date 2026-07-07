@@ -73,6 +73,53 @@ class TinyLlamaClient:
         self._tokenizer = None
         self._model = None
 
+    def translate_to_english(self, text: str) -> str:
+        if not self.config.enabled:
+            return text
+        try:
+            prompt = (
+                "Translate the following movie query from Portuguese to English.\n"
+                "Portuguese: astronautas no espaço\n"
+                "English: astronauts in space\n\n"
+                "Portuguese: filme de ação com carros\n"
+                "English: action movie with cars\n\n"
+                f"Portuguese: {text}\n"
+                "English:"
+            )
+            payload = json.dumps(
+                {
+                    "model": self.config.ollama_model,
+                    "prompt": prompt,
+                    "stream": False,
+                    "raw": True,
+                    "options": {
+                        "temperature": 0.0,
+                        "num_predict": 40,
+                        "stop": ["\n"],
+                    },
+                }
+            ).encode("utf-8")
+            request = urllib.request.Request(
+                self.config.endpoint,
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(request, timeout=3.0) as response:
+                body = response.read().decode("utf-8")
+            data = json.loads(body)
+            translation = data.get("response", "").strip()
+            # Clean quotes if any
+            if translation.startswith('"') and translation.endswith('"'):
+                translation = translation[1:-1].strip()
+            if translation.startswith("'") and translation.endswith("'"):
+                translation = translation[1:-1].strip()
+            if translation:
+                return translation
+        except Exception as exc:
+            print(f"Translation failed: {exc}", flush=True)
+        return text
+
     def generate_answer(
         self,
         question: str,
@@ -141,18 +188,25 @@ class TinyLlamaClient:
         )
 
     def _call_ollama(self, prompt: str) -> str:
+        system_prompt = "You are a movie assistant. Answer the user's question in Portuguese using only the provided synopses and format."
+        # Adapt endpoint from /api/generate to /api/chat to let Ollama format messages correctly
+        chat_endpoint = self.config.endpoint.replace("/api/generate", "/api/chat")
         payload = json.dumps(
             {
                 "model": self.config.ollama_model,
-                "prompt": prompt,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
+                ],
                 "stream": False,
                 "options": {
                     "temperature": self.config.temperature,
+                    "num_predict": self.config.max_new_tokens,
                 },
             }
         ).encode("utf-8")
         request = urllib.request.Request(
-            self.config.endpoint,
+            chat_endpoint,
             data=payload,
             headers={"Content-Type": "application/json"},
             method="POST",
@@ -160,7 +214,7 @@ class TinyLlamaClient:
         with urllib.request.urlopen(request, timeout=self.config.timeout_seconds) as response:
             body = response.read().decode("utf-8")
         data = json.loads(body)
-        answer = data.get("response", "").strip()
+        answer = data.get("message", {}).get("content", "").strip()
         if not answer:
             raise ValueError("O backend do TinyLlama respondeu sem texto.")
         return answer
@@ -243,12 +297,34 @@ class TinyLlamaClient:
         for marker in markers:
             if marker in cleaned:
                 normalized = cleaned[cleaned.index(marker) :].strip()
-                if "<" in normalized or ">" in normalized:
+                
+                # Check for actual unresolved placeholder strings
+                placeholders = (
+                    "titulo do filme", "nao foi possivel determinar", "nao foi possível determinar",
+                    "uma explicacao curta", "uma explicação curta", "titulos alternativos", "títulos alternativos",
+                    "best matching", "short explanation", "other matching", "other movie",
+                    "escreva o titulo", "escreva o título", "escreva uma"
+                )
+                if any(p in normalized.lower() for p in placeholders):
+                    print(f"--- LLM VALIDATION FAILURE (placeholders) ---\nRaw answer:\n{answer}\n------------------------------", flush=True)
                     raise ValueError("O LLM respondeu com placeholders em vez de um titulo real.")
+                
+                # Clean any accidental brackets or angle brackets wrapping title/text
+                normalized = normalized.replace("<", "").replace(">", "").replace("[", "").replace("]", "")
                 return normalized
 
         if any(token in cleaned for token in ("Pergunta do usuario", "Similaridade", "Sinopse:", "Titulo:")):
+            print(f"--- LLM VALIDATION FAILURE (repeated context) ---\nRaw answer:\n{answer}\n------------------------------", flush=True)
             raise ValueError("O LLM repetiu o contexto em vez de produzir a resposta final.")
+
+        # Loose parsing fallback: if the LLM produced a non-empty paragraph, accept it as the justification
+        if cleaned:
+            justification = cleaned.replace("<", "").replace(">", "").replace("[", "").replace("]", "")
+            return TinyLlamaClient._format_answer(
+                title="Não foi possível determinar",
+                justification=justification,
+                alternatives="Nenhuma"
+            )
 
         raise ValueError("O LLM nao seguiu o formato esperado.")
 
@@ -259,28 +335,25 @@ class TinyLlamaClient:
         retrieval_method: str,
     ) -> str:
         lines = [
-            f"Metodo de recuperacao: {retrieval_method}.",
-            f"Pergunta do usuario: {question}",
+            "Instruction: Based on the movie synopses below, identify which movie best matches the user's Question.",
+            "If no movie matches the Question, write 'nao foi possivel determinar' as the Filme provável.",
             "",
-            "Use apenas estes resultados recuperados:",
+            "Response format (replace the text inside brackets with your answer):",
+            "Filme provável: [Best matching movie title]",
+            "Justificativa: [Short explanation in Portuguese based on the synopses]",
+            "Alternativas: [Other matching movie titles from the list, or nenhuma]",
+            "",
+            f"Question: {question}",
+            "",
+            "Retrieved Movies:",
         ]
         for idx, item in enumerate(results[: self.config.max_results_in_prompt], start=1):
             synopsis = str(item["synopsis"])[: self.config.max_synopsis_chars]
             lines.extend(
                 [
-                    f"{idx}. {item['title']} (similaridade {float(item['score']):.4f})",
-                    f"   {synopsis}",
-                    "",
+                    f"- {item['title']}: {synopsis}",
                 ]
             )
-        lines.extend(
-            [
-                "Responda exatamente neste formato:",
-                "Filme provável: <titulo ou nao foi possivel determinar>",
-                "Justificativa: <uma explicacao curta baseada nas sinopses>",
-                "Alternativas: <titulos alternativos ou nenhuma>",
-            ]
-        )
         return "\n".join(lines)
 
     @staticmethod

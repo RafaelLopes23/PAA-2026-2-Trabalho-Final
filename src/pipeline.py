@@ -98,6 +98,12 @@ class ExactRetriever:
         query_embedding_ms = (time.perf_counter() - embed_start) * 1000.0
 
         if float(np.linalg.norm(query_vector)) <= 1e-12:
+            if self.method_name == "word2vec":
+                raise PipelineError(
+                    "A consulta nao gerou um vetor valido usando 'word2vec'. "
+                    "Como o vocabulario do Word2Vec foi treinado na base de filmes em ingles, "
+                    "tente fazer sua busca em ingles (ex: 'astronaut space' ou 'action car movie')."
+                )
             raise PipelineError(
                 f"A consulta nao gerou um vetor valido usando o metodo '{self.method_name}'."
             )
@@ -243,8 +249,20 @@ class QueryPipeline:
             raise MethodUnavailableError(f"Metodo '{method}' indisponivel: {reason}")
 
         total_start = time.perf_counter()
+        
+        search_question = question
+        translation_warning = None
+        if requested_method == "word2vec":
+            try:
+                translated = self.llm_client.translate_to_english(question)
+                if translated and translated.lower().strip() != question.lower().strip():
+                    search_question = translated
+                    translation_warning = f"Word2Vec: consulta traduzida automaticamente para o inglês: '{translated}'"
+            except Exception:
+                pass
+
         retriever = self.retrievers[requested_method]
-        results, timings = retriever.search(question=question, top_k=top_k)
+        results, timings = retriever.search(question=search_question, top_k=top_k)
 
         llm_start = time.perf_counter()
         generation: GenerationResult = self.llm_client.generate_answer(
@@ -275,7 +293,7 @@ class QueryPipeline:
             "answer": generation.answer,
             "llm_backend": generation.backend,
             "results": public_results,
-            "warnings": generation.warnings,
+            "warnings": (generation.warnings or []) + ([translation_warning] if translation_warning else []),
             "timings_ms": {
                 "query_embedding": timings["query_embedding"],
                 "retrieval": timings["retrieval"],
