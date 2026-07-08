@@ -133,31 +133,29 @@ class TinyLlamaClient:
         if not self.config.enabled:
             return GenerationResult(
                 answer=self._fallback_answer(results, unavailable_reason="Local LLM disabled."),
-                backend="fallback",
-                warnings=["Local LLM disabled; response was formatted from retrieved results."],
+                backend="retrieval-critic",
             )
 
-        warnings: list[str] = []
+        diagnostics: list[str] = []
 
         if self.config.backend in {"auto", "ollama"}:
             try:
                 answer = self._normalize_answer(self._call_ollama(prompt), results)
                 return GenerationResult(answer=answer, backend=f"ollama:{self.config.ollama_model}")
             except (urllib.error.URLError, TimeoutError) as exc:
-                warnings.append(f"Ollama unavailable: {exc}")
+                diagnostics.append(f"Ollama unavailable: {exc}")
                 if self.config.backend == "ollama":
                     return GenerationResult(
                         answer=self._fallback_answer(results, unavailable_reason=str(exc)),
-                        backend="fallback",
-                        warnings=warnings,
+                        backend="retrieval-critic",
                     )
             except ValueError as exc:
-                warnings.append(f"Ollama returned invalid output: {exc}")
+                diagnostics.append(f"Ollama returned invalid output: {exc}")
+                print(f"LLM diagnostic: {diagnostics[-1]}", flush=True)
                 if self.config.backend == "ollama":
                     return GenerationResult(
                         answer=self._fallback_answer(results, unavailable_reason=str(exc)),
-                        backend="fallback",
-                        warnings=warnings,
+                        backend="retrieval-critic",
                     )
 
         if self.config.backend in {"auto", "transformers"}:
@@ -166,18 +164,16 @@ class TinyLlamaClient:
                 return GenerationResult(
                     answer=answer,
                     backend=f"transformers:{self.config.transformers_model}",
-                    warnings=warnings,
                 )
             except ValueError as exc:
-                warnings.append(f"Transformers returned invalid output: {exc}")
+                diagnostics.append(f"Transformers returned invalid output: {exc}")
+                print(f"LLM diagnostic: {diagnostics[-1]}", flush=True)
             except Exception as exc:  # noqa: BLE001
-                warnings.append(f"Transformers unavailable: {exc}")
+                diagnostics.append(f"Transformers unavailable: {exc}")
 
-        reason = "; ".join(warnings) if warnings else "no local backend available"
         return GenerationResult(
-            answer=self._fallback_answer(results, unavailable_reason=reason),
-            backend="fallback",
-            warnings=warnings or ["No local LLM backend available."],
+            answer=self._fallback_answer(results, unavailable_reason="No local LLM backend produced a valid answer."),
+            backend="retrieval-critic",
         )
 
     def _call_ollama(self, prompt: str) -> str:
@@ -310,6 +306,7 @@ class TinyLlamaClient:
                 # Check for actual unresolved placeholder strings
                 placeholders = (
                     "movie title",
+                    "exact retrieved movie title", "one exact title",
                     "short explanation", "alternative titles",
                     "best matching", "short explanation", "other matching", "other movie",
                     "write the title", "write a"
@@ -342,29 +339,26 @@ class TinyLlamaClient:
         retrieval_method: str,
     ) -> str:
         lines = [
-            "Instruction: comment on the ranked movie results produced by the search method.",
-            "The search method is the source of truth for candidate movies.",
-            "Choose the likely movie only from the retrieved titles below. Prefer Rank 1 unless another retrieved synopsis is clearly a better match.",
-            "Never mention a title that is not in the retrieved list.",
-            "If the evidence is weak, explain the uncertainty in the Reason, but still use a retrieved title.",
+            "You are reviewing ranked movie search results.",
+            "Use only the candidate titles below. Do not invent titles.",
+            "Prefer candidate 1 unless another candidate clearly matches the question better.",
             "",
-            "Response format (replace the text inside brackets with your answer):",
-            "Likely movie: [exact retrieved movie title]",
-            "Reason: [short English comment about how the retrieved synopsis relates to the question]",
-            "Alternatives: [other exact retrieved movie titles, or None]",
+            "Return exactly three lines:",
+            "Likely movie: <one exact candidate title>",
+            "Reason: <one short sentence in English>",
+            "Alternatives: <other exact candidate titles, or None>",
             "",
             f"Search method: {retrieval_method}",
             f"Question: {question}",
             "",
-            "Retrieved Movies, already ranked by the search method:",
+            "Candidates:",
         ]
         for idx, item in enumerate(results[: self.config.max_results_in_prompt], start=1):
             synopsis = str(item["synopsis"])[: self.config.max_synopsis_chars]
             score = float(item.get("score", 0.0))
             lines.extend(
                 [
-                    f"- Rank {idx} | Title: {item['title']} | Similarity: {score:.4f}",
-                    f"  Synopsis: {synopsis}",
+                    f"{idx}. {item['title']} (score {score:.4f}) - {synopsis}",
                 ]
             )
         return "\n".join(lines)

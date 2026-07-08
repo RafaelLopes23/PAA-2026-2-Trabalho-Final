@@ -1588,7 +1588,11 @@
 
         if (data.answer) {
           aiContent.innerHTML = "";
-          aiBackend.innerText = `CRITIC: ${(data.llm_backend || "TINYLLAMA").toUpperCase()}`;
+          const criticLabel =
+            data.llm_backend === "retrieval-critic"
+              ? "RETRIEVAL CRITIC"
+              : (data.llm_backend || "TINYLLAMA").toUpperCase();
+          aiBackend.innerText = `CRITIC: ${criticLabel}`;
 
           // Show warnings if any
           if (data.warnings && data.warnings.length > 0) {
