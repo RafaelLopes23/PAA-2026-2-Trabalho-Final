@@ -141,7 +141,7 @@ class TinyLlamaClient:
 
         if self.config.backend in {"auto", "ollama"}:
             try:
-                answer = self._normalize_answer(self._call_ollama(prompt))
+                answer = self._normalize_answer(self._call_ollama(prompt), results)
                 return GenerationResult(answer=answer, backend=f"ollama:{self.config.ollama_model}")
             except (urllib.error.URLError, TimeoutError) as exc:
                 warnings.append(f"Ollama unavailable: {exc}")
@@ -162,7 +162,7 @@ class TinyLlamaClient:
 
         if self.config.backend in {"auto", "transformers"}:
             try:
-                answer = self._normalize_answer(self._call_transformers(prompt))
+                answer = self._normalize_answer(self._call_transformers(prompt), results)
                 return GenerationResult(
                     answer=answer,
                     backend=f"transformers:{self.config.transformers_model}",
@@ -181,7 +181,10 @@ class TinyLlamaClient:
         )
 
     def _call_ollama(self, prompt: str) -> str:
-        system_prompt = "You are a movie assistant. Answer in English using only the provided synopses and the requested format."
+        system_prompt = (
+            "You are a movie search critic. The retrieval engine already ranked the candidate movies. "
+            "Answer in English using only those candidates. Never invent a movie title."
+        )
         # Adapt endpoint from /api/generate to /api/chat to let Ollama format messages correctly
         chat_endpoint = self.config.endpoint.replace("/api/generate", "/api/chat")
         payload = json.dumps(
@@ -235,11 +238,13 @@ class TinyLlamaClient:
                 self._tokenizer.pad_token = self._tokenizer.eos_token
 
         system_prompt = (
-            "You are a movie assistant. "
-            "Answer in English using only the retrieved synopses. "
+            "You are a movie search critic. "
+            "The retrieval engine already ranked the candidate movies. "
+            "Answer in English using only those candidates. "
+            "Never invent a movie title. "
             "Do not copy the question or repeat the result list. "
             "Start directly with the final answer. "
-            "If there is not enough evidence, say so explicitly."
+            "If the evidence is weak, explain that while still commenting on the retrieved ranking."
         )
 
         if hasattr(self._tokenizer, "apply_chat_template") and self._tokenizer.chat_template:
@@ -283,9 +288,19 @@ class TinyLlamaClient:
             raise ValueError("The transformers backend returned an empty response.")
         return answer
 
-    @staticmethod
-    def _normalize_answer(answer: str) -> str:
+    @classmethod
+    def _normalize_answer(cls, answer: str, results: Sequence[dict[str, object]]) -> str:
         cleaned = answer.strip()
+        title_map = cls._retrieved_title_map(results)
+        valid_titles = set(title_map)
+
+        if not cleaned:
+            raise ValueError("The LLM did not follow the expected format.")
+        repeated_context_tokens = ("User question", "Similarity", "Synopsis:", "Title:", "Retrieved Movies:")
+        if any(token in cleaned for token in repeated_context_tokens):
+            print(f"--- LLM VALIDATION FAILURE (repeated context) ---\nRaw answer:\n{answer}\n------------------------------", flush=True)
+            raise ValueError("The LLM repeated the context instead of producing the final answer.")
+
         markers = ("Likely movie:", "Best match:", "Movie:")
         for marker in markers:
             marker_index = cleaned.lower().find(marker.lower())
@@ -302,23 +317,21 @@ class TinyLlamaClient:
                 if any(p in normalized.lower() for p in placeholders):
                     print(f"--- LLM VALIDATION FAILURE (placeholders) ---\nRaw answer:\n{answer}\n------------------------------", flush=True)
                     raise ValueError("The LLM returned placeholders instead of a real title.")
-                
-                # Clean any accidental brackets or angle brackets wrapping title/text
-                normalized = normalized.replace("<", "").replace(">", "").replace("[", "").replace("]", "")
-                return normalized
 
-        if any(token in cleaned for token in ("User question", "Similarity", "Synopsis:", "Title:", "Retrieved Movies:")):
-            print(f"--- LLM VALIDATION FAILURE (repeated context) ---\nRaw answer:\n{answer}\n------------------------------", flush=True)
-            raise ValueError("The LLM repeated the context instead of producing the final answer.")
+                parsed_title = cls._extract_field(normalized, ("Likely movie", "Best match", "Movie"))
+                title_key = cls._title_key(parsed_title)
+                if title_key == cls._title_key("Unable to determine") and results:
+                    raise ValueError("The LLM declined to choose among retrieved results.")
+                if title_key not in valid_titles:
+                    raise ValueError(f"The LLM selected a title outside the retrieved results: {parsed_title}")
 
-        # Loose parsing fallback: if the LLM produced a non-empty paragraph, accept it as the justification
-        if cleaned:
-            justification = cleaned.replace("<", "").replace(">", "").replace("[", "").replace("]", "")
-            return TinyLlamaClient._format_answer(
-                title="Unable to determine",
-                justification=justification,
-                alternatives="None",
-            )
+                reason = cls._extract_field(normalized, ("Reason", "Justification"))
+                alternatives = cls._extract_field(normalized, ("Alternatives", "Alternative"))
+                return cls._format_answer(
+                    title=title_map[title_key],
+                    justification=cls._clean_text(reason) or cls._fallback_reason(results[0]),
+                    alternatives=cls._normalize_alternatives(alternatives, title_map, selected_title_key=title_key),
+                )
 
         raise ValueError("The LLM did not follow the expected format.")
 
@@ -329,23 +342,29 @@ class TinyLlamaClient:
         retrieval_method: str,
     ) -> str:
         lines = [
-            "Instruction: Based on the movie synopses below, identify which movie best matches the user's Question.",
-            "If no movie matches the Question, write 'Unable to determine' as the likely movie.",
+            "Instruction: comment on the ranked movie results produced by the search method.",
+            "The search method is the source of truth for candidate movies.",
+            "Choose the likely movie only from the retrieved titles below. Prefer Rank 1 unless another retrieved synopsis is clearly a better match.",
+            "Never mention a title that is not in the retrieved list.",
+            "If the evidence is weak, explain the uncertainty in the Reason, but still use a retrieved title.",
             "",
             "Response format (replace the text inside brackets with your answer):",
-            "Likely movie: [Best matching movie title]",
-            "Reason: [Short explanation in English based on the synopses]",
-            "Alternatives: [Other matching movie titles from the list, or None]",
+            "Likely movie: [exact retrieved movie title]",
+            "Reason: [short English comment about how the retrieved synopsis relates to the question]",
+            "Alternatives: [other exact retrieved movie titles, or None]",
             "",
+            f"Search method: {retrieval_method}",
             f"Question: {question}",
             "",
-            "Retrieved Movies:",
+            "Retrieved Movies, already ranked by the search method:",
         ]
         for idx, item in enumerate(results[: self.config.max_results_in_prompt], start=1):
             synopsis = str(item["synopsis"])[: self.config.max_synopsis_chars]
+            score = float(item.get("score", 0.0))
             lines.extend(
                 [
-                    f"- {item['title']}: {synopsis}",
+                    f"- Rank {idx} | Title: {item['title']} | Similarity: {score:.4f}",
+                    f"  Synopsis: {synopsis}",
                 ]
             )
         return "\n".join(lines)
@@ -360,12 +379,82 @@ class TinyLlamaClient:
         alternatives = ", ".join(titles[1:]) if len(titles) > 1 else "None"
         return TinyLlamaClient._format_answer(
             title=first_title,
-            justification=(
-                "This was the closest retrieved synopsis for the query. "
-                "The answer is based only on the semantic search results."
-            ),
+            justification=TinyLlamaClient._fallback_reason(results[0]) if results else unavailable_reason,
             alternatives=alternatives,
         )
+
+    @staticmethod
+    def _fallback_reason(item: dict[str, object]) -> str:
+        score = item.get("score")
+        if isinstance(score, (int, float)):
+            return (
+                f"The search method ranked this movie first with similarity {float(score):.4f}. "
+                "This analysis is based only on the retrieved synopsis and ranking."
+            )
+        return "The search method ranked this movie first among the retrieved candidates."
+
+    @staticmethod
+    def _retrieved_title_map(results: Sequence[dict[str, object]]) -> dict[str, str]:
+        return {
+            TinyLlamaClient._title_key(str(item["title"])): str(item["title"])
+            for item in results
+            if str(item.get("title", "")).strip()
+        }
+
+    @staticmethod
+    def _title_key(value: str) -> str:
+        cleaned = TinyLlamaClient._clean_text(value)
+        return " ".join(cleaned.lower().split())
+
+    @staticmethod
+    def _extract_field(text: str, field_names: Sequence[str]) -> str:
+        lines = text.splitlines()
+        lower_names = tuple(name.lower() for name in field_names)
+        for index, line in enumerate(lines):
+            stripped = line.strip()
+            lowered = stripped.lower()
+            for name in lower_names:
+                prefix = f"{name}:"
+                if lowered.startswith(prefix):
+                    value = stripped[len(prefix):].strip()
+                    continuation: list[str] = []
+                    for next_line in lines[index + 1:]:
+                        next_stripped = next_line.strip()
+                        next_lowered = next_stripped.lower()
+                        field_markers = (
+                            "likely movie",
+                            "best match",
+                            "movie",
+                            "reason",
+                            "justification",
+                            "alternatives",
+                            "alternative",
+                        )
+                        if any(next_lowered.startswith(f"{candidate}:") for candidate in field_markers):
+                            break
+                        if next_stripped:
+                            continuation.append(next_stripped)
+                    return TinyLlamaClient._clean_text(" ".join([value, *continuation]).strip())
+        return ""
+
+    @staticmethod
+    def _normalize_alternatives(
+        alternatives: str,
+        title_map: dict[str, str],
+        selected_title_key: str,
+    ) -> str:
+        if not alternatives or alternatives.strip().lower() == "none":
+            return "None"
+        selected: list[str] = []
+        for chunk in alternatives.replace(";", ",").split(","):
+            key = TinyLlamaClient._title_key(chunk)
+            if key in title_map and key != selected_title_key and title_map[key] not in selected:
+                selected.append(title_map[key])
+        return ", ".join(selected) if selected else "None"
+
+    @staticmethod
+    def _clean_text(value: str) -> str:
+        return value.strip().strip("\"'`").replace("<", "").replace(">", "").replace("[", "").replace("]", "")
 
     @staticmethod
     def _format_answer(title: str, justification: str, alternatives: str) -> str:
