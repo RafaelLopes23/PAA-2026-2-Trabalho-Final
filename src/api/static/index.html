@@ -1098,18 +1098,6 @@
                 >
               </div>
 
-              <!-- Cosine (Best Exact) -->
-              <div class="method-option" data-method="cosine">
-                <div class="method-header">
-                  <span class="method-name">Cosseno</span>
-                  <span class="method-badge badge-available"></span>
-                </div>
-                <span class="method-desc"
-                  >Best exact search. Prioritizes Sentence Embeddings and falls back to
-                  Word2Vec.</span
-                >
-              </div>
-
               <!-- Sentence Embeddings -->
               <div class="method-option" data-method="sentence">
                 <div class="method-header">
@@ -1459,15 +1447,12 @@
               if (activeMethod === methodName) {
                 option.classList.remove("active");
                 // Find another available method
-                const firstAvailable = Object.keys(methodsMetadata).find(
-                  (k) => methodsMetadata[k].available,
+                const firstAvailableOption = Array.from(methodOptions).find(
+                  (candidate) => methodsMetadata[candidate.dataset.method]?.available,
                 );
-                if (firstAvailable) {
-                  activeMethod = firstAvailable;
-                  const activeOpt = document.querySelector(
-                    `.method-option[data-method="${firstAvailable}"]`,
-                  );
-                  if (activeOpt) activeOpt.classList.add("active");
+                if (firstAvailableOption) {
+                  activeMethod = firstAvailableOption.dataset.method;
+                  firstAvailableOption.classList.add("active");
                 }
               }
             }
