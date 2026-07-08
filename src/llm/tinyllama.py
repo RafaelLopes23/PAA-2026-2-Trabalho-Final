@@ -1,11 +1,4 @@
-"""
-Cliente leve para um TinyLlama local.
-
-Por padrao, usa a API HTTP do Ollama em `http://localhost:11434/api/generate`,
-o que evita acoplar o servidor FastAPI a um runtime especifico de GPU/CPU.
-Se o backend local nao estiver disponivel, o modulo cai para um resumo
-deterministico baseado apenas nos resultados recuperados.
-"""
+"""Lightweight client for a local TinyLlama model."""
 
 from __future__ import annotations
 
@@ -129,9 +122,9 @@ class TinyLlamaClient:
         if not results:
             return GenerationResult(
                 answer=self._format_answer(
-                    title="nao foi possivel determinar",
-                    justification="Nao encontrei sinopses relevantes o suficiente para responder com seguranca.",
-                    alternatives="nenhuma",
+                    title="Unable to determine",
+                    justification="No sufficiently relevant synopses were retrieved.",
+                    alternatives="None",
                 ),
                 backend="no-results",
             )
@@ -139,9 +132,9 @@ class TinyLlamaClient:
         prompt = self._build_prompt(question, results, retrieval_method)
         if not self.config.enabled:
             return GenerationResult(
-                answer=self._fallback_answer(results, unavailable_reason="LLM local desabilitado."),
+                answer=self._fallback_answer(results, unavailable_reason="Local LLM disabled."),
                 backend="fallback",
-                warnings=["LLM local desabilitado; resposta formatada sem TinyLlama."],
+                warnings=["Local LLM disabled; response was formatted from retrieved results."],
             )
 
         warnings: list[str] = []
@@ -151,7 +144,7 @@ class TinyLlamaClient:
                 answer = self._normalize_answer(self._call_ollama(prompt))
                 return GenerationResult(answer=answer, backend=f"ollama:{self.config.ollama_model}")
             except (urllib.error.URLError, TimeoutError) as exc:
-                warnings.append(f"Ollama indisponivel: {exc}")
+                warnings.append(f"Ollama unavailable: {exc}")
                 if self.config.backend == "ollama":
                     return GenerationResult(
                         answer=self._fallback_answer(results, unavailable_reason=str(exc)),
@@ -159,7 +152,7 @@ class TinyLlamaClient:
                         warnings=warnings,
                     )
             except ValueError as exc:
-                warnings.append(f"Ollama gerou saida invalida: {exc}")
+                warnings.append(f"Ollama returned invalid output: {exc}")
                 if self.config.backend == "ollama":
                     return GenerationResult(
                         answer=self._fallback_answer(results, unavailable_reason=str(exc)),
@@ -176,19 +169,19 @@ class TinyLlamaClient:
                     warnings=warnings,
                 )
             except ValueError as exc:
-                warnings.append(f"Transformers gerou saida invalida: {exc}")
+                warnings.append(f"Transformers returned invalid output: {exc}")
             except Exception as exc:  # noqa: BLE001
-                warnings.append(f"Transformers indisponivel: {exc}")
+                warnings.append(f"Transformers unavailable: {exc}")
 
-        reason = "; ".join(warnings) if warnings else "nenhum backend local disponivel"
+        reason = "; ".join(warnings) if warnings else "no local backend available"
         return GenerationResult(
             answer=self._fallback_answer(results, unavailable_reason=reason),
             backend="fallback",
-            warnings=warnings or ["Nenhum backend de LLM local disponivel."],
+            warnings=warnings or ["No local LLM backend available."],
         )
 
     def _call_ollama(self, prompt: str) -> str:
-        system_prompt = "You are a movie assistant. Answer the user's question in Portuguese using only the provided synopses and format."
+        system_prompt = "You are a movie assistant. Answer in English using only the provided synopses and the requested format."
         # Adapt endpoint from /api/generate to /api/chat to let Ollama format messages correctly
         chat_endpoint = self.config.endpoint.replace("/api/generate", "/api/chat")
         payload = json.dumps(
@@ -216,7 +209,7 @@ class TinyLlamaClient:
         data = json.loads(body)
         answer = data.get("message", {}).get("content", "").strip()
         if not answer:
-            raise ValueError("O backend do TinyLlama respondeu sem texto.")
+            raise ValueError("TinyLlama returned an empty response.")
         return answer
 
     def _call_transformers(self, prompt: str) -> str:
@@ -242,11 +235,11 @@ class TinyLlamaClient:
                 self._tokenizer.pad_token = self._tokenizer.eos_token
 
         system_prompt = (
-            "Voce e um assistente de filmes. "
-            "Responda em portugues do Brasil usando apenas as sinopses recuperadas. "
-            "Nao copie a pergunta nem repita a lista de resultados. "
-            "Comece diretamente pela resposta final. "
-            "Se nao houver evidencia suficiente, diga isso explicitamente."
+            "You are a movie assistant. "
+            "Answer in English using only the retrieved synopses. "
+            "Do not copy the question or repeat the result list. "
+            "Start directly with the final answer. "
+            "If there is not enough evidence, say so explicitly."
         )
 
         if hasattr(self._tokenizer, "apply_chat_template") and self._tokenizer.chat_template:
@@ -287,46 +280,47 @@ class TinyLlamaClient:
         answer = answer.removeprefix("Assistant:").strip()
         answer = answer.removeprefix("### Assistant:").strip()
         if not answer:
-            raise ValueError("O backend transformers respondeu sem texto.")
+            raise ValueError("The transformers backend returned an empty response.")
         return answer
 
     @staticmethod
     def _normalize_answer(answer: str) -> str:
         cleaned = answer.strip()
-        markers = ("Filme provável:", "Filme provavel:")
+        markers = ("Likely movie:", "Best match:", "Movie:")
         for marker in markers:
-            if marker in cleaned:
-                normalized = cleaned[cleaned.index(marker) :].strip()
+            marker_index = cleaned.lower().find(marker.lower())
+            if marker_index >= 0:
+                normalized = cleaned[marker_index:].strip()
                 
                 # Check for actual unresolved placeholder strings
                 placeholders = (
-                    "titulo do filme", "nao foi possivel determinar", "nao foi possível determinar",
-                    "uma explicacao curta", "uma explicação curta", "titulos alternativos", "títulos alternativos",
+                    "movie title",
+                    "short explanation", "alternative titles",
                     "best matching", "short explanation", "other matching", "other movie",
-                    "escreva o titulo", "escreva o título", "escreva uma"
+                    "write the title", "write a"
                 )
                 if any(p in normalized.lower() for p in placeholders):
                     print(f"--- LLM VALIDATION FAILURE (placeholders) ---\nRaw answer:\n{answer}\n------------------------------", flush=True)
-                    raise ValueError("O LLM respondeu com placeholders em vez de um titulo real.")
+                    raise ValueError("The LLM returned placeholders instead of a real title.")
                 
                 # Clean any accidental brackets or angle brackets wrapping title/text
                 normalized = normalized.replace("<", "").replace(">", "").replace("[", "").replace("]", "")
                 return normalized
 
-        if any(token in cleaned for token in ("Pergunta do usuario", "Similaridade", "Sinopse:", "Titulo:")):
+        if any(token in cleaned for token in ("User question", "Similarity", "Synopsis:", "Title:", "Retrieved Movies:")):
             print(f"--- LLM VALIDATION FAILURE (repeated context) ---\nRaw answer:\n{answer}\n------------------------------", flush=True)
-            raise ValueError("O LLM repetiu o contexto em vez de produzir a resposta final.")
+            raise ValueError("The LLM repeated the context instead of producing the final answer.")
 
         # Loose parsing fallback: if the LLM produced a non-empty paragraph, accept it as the justification
         if cleaned:
             justification = cleaned.replace("<", "").replace(">", "").replace("[", "").replace("]", "")
             return TinyLlamaClient._format_answer(
-                title="Não foi possível determinar",
+                title="Unable to determine",
                 justification=justification,
-                alternatives="Nenhuma"
+                alternatives="None",
             )
 
-        raise ValueError("O LLM nao seguiu o formato esperado.")
+        raise ValueError("The LLM did not follow the expected format.")
 
     def _build_prompt(
         self,
@@ -336,12 +330,12 @@ class TinyLlamaClient:
     ) -> str:
         lines = [
             "Instruction: Based on the movie synopses below, identify which movie best matches the user's Question.",
-            "If no movie matches the Question, write 'nao foi possivel determinar' as the Filme provável.",
+            "If no movie matches the Question, write 'Unable to determine' as the likely movie.",
             "",
             "Response format (replace the text inside brackets with your answer):",
-            "Filme provável: [Best matching movie title]",
-            "Justificativa: [Short explanation in Portuguese based on the synopses]",
-            "Alternativas: [Other matching movie titles from the list, or nenhuma]",
+            "Likely movie: [Best matching movie title]",
+            "Reason: [Short explanation in English based on the synopses]",
+            "Alternatives: [Other matching movie titles from the list, or None]",
             "",
             f"Question: {question}",
             "",
@@ -362,13 +356,13 @@ class TinyLlamaClient:
         unavailable_reason: str,
     ) -> str:
         titles = [str(item["title"]) for item in results[:3]]
-        first_title = titles[0] if titles else "desconhecido"
-        alternatives = ", ".join(titles[1:]) if len(titles) > 1 else "nenhuma alternativa adicional"
+        first_title = titles[0] if titles else "Unknown"
+        alternatives = ", ".join(titles[1:]) if len(titles) > 1 else "None"
         return TinyLlamaClient._format_answer(
             title=first_title,
             justification=(
-                "O backend local nao produziu uma resposta confiavel. "
-                "Com base apenas nas sinopses recuperadas, este foi o item mais similar."
+                "This was the closest retrieved synopsis for the query. "
+                "The answer is based only on the semantic search results."
             ),
             alternatives=alternatives,
         )
@@ -376,7 +370,7 @@ class TinyLlamaClient:
     @staticmethod
     def _format_answer(title: str, justification: str, alternatives: str) -> str:
         return (
-            f"Filme provável: {title}\n"
-            f"Justificativa: {justification}\n"
-            f"Alternativas: {alternatives}"
+            f"Likely movie: {title}\n"
+            f"Reason: {justification}\n"
+            f"Alternatives: {alternatives}"
         )

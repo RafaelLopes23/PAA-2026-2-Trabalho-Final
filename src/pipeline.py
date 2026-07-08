@@ -1,14 +1,4 @@
-"""
-Camada de integracao do sistema de perguntas e respostas.
-
-Esta e a ponte entre:
-- embeddings das sinopses;
-- metodos de busca (cosseno exato e HNSW);
-- LLM local para formatacao da resposta.
-
-O objetivo aqui e deixar o projeto utilizavel ja com Word2Vec + HNSW/Welder e
-com a API pronta para receber outros backends de embeddings sem retrabalho.
-"""
+"""Integration layer for the movie question-answering system."""
 
 from __future__ import annotations
 
@@ -38,11 +28,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class PipelineError(RuntimeError):
-    """Erro de alto nivel do pipeline."""
+    """High-level pipeline error."""
 
 
 class MethodUnavailableError(PipelineError):
-    """Metodo solicitado nao esta pronto para uso."""
+    """Requested method is not ready for use."""
 
 
 @dataclass
@@ -69,7 +59,7 @@ class QueryEmbedderAdapter:
         elif hasattr(self.obj, "encode"):
             vector = self.obj.encode([text])
         else:
-            raise PipelineError(f"Embedder '{self.name}' nao expoe embed_query(), embed_text() nem encode().")
+            raise PipelineError(f"Embedder '{self.name}' does not expose embed_query(), embed_text(), or encode().")
 
         array = np.asarray(vector, dtype=np.float32)
         if array.ndim == 2:
@@ -100,12 +90,12 @@ class ExactRetriever:
         if float(np.linalg.norm(query_vector)) <= 1e-12:
             if self.method_name == "word2vec":
                 raise PipelineError(
-                    "A consulta nao gerou um vetor valido usando 'word2vec'. "
-                    "Como o vocabulario do Word2Vec foi treinado na base de filmes em ingles, "
-                    "tente fazer sua busca em ingles (ex: 'astronaut space' ou 'action car movie')."
+                    "The query did not produce a valid vector with 'word2vec'. "
+                    "The Word2Vec vocabulary was trained on English movie synopses, "
+                    "so try an English query such as 'astronaut space' or 'action car movie'."
                 )
             raise PipelineError(
-                f"A consulta nao gerou um vetor valido usando o metodo '{self.method_name}'."
+                f"The query did not produce a valid vector with method '{self.method_name}'."
             )
 
         search_start = time.perf_counter()
@@ -157,7 +147,7 @@ class HNSWRetriever:
         query_embedding_ms = (time.perf_counter() - embed_start) * 1000.0
 
         if float(np.linalg.norm(query_vector)) <= 1e-12:
-            raise PipelineError("A consulta nao gerou embedding valido para o indice HNSW.")
+            raise PipelineError("The query did not produce a valid embedding for the HNSW index.")
 
         search_start = time.perf_counter()
         indices, distances = self.index.query(query_vector, top_k=top_k)
@@ -242,11 +232,11 @@ class QueryPipeline:
         info = self.method_infos.get(requested_method)
         if info is None:
             raise MethodUnavailableError(
-                f"Metodo '{method}' desconhecido. Disponiveis: {', '.join(sorted(self.method_infos))}."
+                f"Unknown method '{method}'. Available methods: {', '.join(sorted(self.method_infos))}."
             )
         if not info.available or requested_method not in self.retrievers:
-            reason = info.reason or "Metodo ainda nao disponivel no ambiente atual."
-            raise MethodUnavailableError(f"Metodo '{method}' indisponivel: {reason}")
+            reason = info.reason or "Method is not available in the current environment."
+            raise MethodUnavailableError(f"Method '{method}' is unavailable: {reason}")
 
         total_start = time.perf_counter()
         
@@ -257,7 +247,7 @@ class QueryPipeline:
                 translated = self.llm_client.translate_to_english(question)
                 if translated and translated.lower().strip() != question.lower().strip():
                     search_question = translated
-                    translation_warning = f"Word2Vec: consulta traduzida automaticamente para o inglês: '{translated}'"
+                    translation_warning = f"Word2Vec: query was automatically translated to English: '{translated}'"
             except Exception:
                 pass
 
@@ -308,7 +298,7 @@ def _read_movies_dataframe(primary_path: Path, csv_fallback_path: Path) -> pd.Da
     attempts: list[str] = []
     for path in (primary_path, csv_fallback_path):
         if not path.exists():
-            attempts.append(f"{path}: arquivo ausente")
+            attempts.append(f"{path}: missing file")
             continue
         try:
             if path.suffix == ".csv":
@@ -318,11 +308,11 @@ def _read_movies_dataframe(primary_path: Path, csv_fallback_path: Path) -> pd.Da
             required_columns = {"movie_id", "title", "synopsis"}
             missing = required_columns.difference(df.columns)
             if missing:
-                raise ValueError(f"colunas obrigatorias ausentes: {sorted(missing)}")
+                raise ValueError(f"missing required columns: {sorted(missing)}")
             return df.reset_index(drop=True)
         except Exception as exc:  # noqa: BLE001
             attempts.append(f"{path}: {exc}")
-    raise PipelineError("Nao foi possivel carregar a base de filmes. Tentativas: " + " | ".join(attempts))
+    raise PipelineError("Could not load the movie dataset. Attempts: " + " | ".join(attempts))
 
 
 def _load_numpy(path: Path) -> np.ndarray:
@@ -373,12 +363,12 @@ def _build_sentence_embedder() -> QueryEmbedderAdapter | None:
 def _load_from_factory_spec(factory_spec: str, model_name: str) -> Any | None:
     if ":" not in factory_spec:
         raise PipelineError(
-            "PAA_SENTENCE_ENCODER_FACTORY deve seguir o formato modulo:atributo."
+            "PAA_SENTENCE_ENCODER_FACTORY must use the format module:attribute."
         )
     module_name, attr_name = factory_spec.split(":", 1)
     module = importlib.import_module(module_name)
     if not hasattr(module, attr_name):
-        raise PipelineError(f"Atributo '{attr_name}' nao encontrado em '{module_name}'.")
+        raise PipelineError(f"Attribute '{attr_name}' was not found in '{module_name}'.")
     return _call_factory(getattr(module, attr_name), model_name=model_name)
 
 
@@ -428,15 +418,15 @@ def build_default_pipeline() -> QueryPipeline:
 
     pipeline = QueryPipeline(movies_df=movies_df, llm_client=llm_client, dataset_error=dataset_error)
 
-    word2vec_description = "Busca exata por similaridade de cosseno sobre embeddings Word2Vec Average."
-    sentence_description = "Busca exata por similaridade de cosseno sobre sentence embeddings."
-    hnsw_description = "Busca aproximada HNSW sobre sentence embeddings."
+    word2vec_description = "Exact cosine search over Word2Vec Average embeddings."
+    sentence_description = "Exact cosine search over sentence embeddings."
+    hnsw_description = "Approximate HNSW search over sentence embeddings."
     cosine_description = (
-        "Alias para a melhor busca exata disponivel: prioriza sentence embeddings e cai para Word2Vec."
+        "Alias for the best available exact search: prioritizes sentence embeddings and falls back to Word2Vec."
     )
 
     if movies_df is None:
-        reason = dataset_error or "Base de filmes indisponivel."
+        reason = dataset_error or "Movie dataset unavailable."
         pipeline.register_method("word2vec", word2vec_description, reason=reason)
         pipeline.register_method("sentence", sentence_description, reason=reason)
         pipeline.register_method("hnsw", hnsw_description, reason=reason)
@@ -452,9 +442,9 @@ def build_default_pipeline() -> QueryPipeline:
 
     word2vec_retriever: ExactRetriever | None = None
     if not word2vec_embeddings_path.exists():
-        pipeline.register_method("word2vec", word2vec_description, reason="Arquivo de embeddings Word2Vec ausente.")
+        pipeline.register_method("word2vec", word2vec_description, reason="Word2Vec embeddings file is missing.")
     elif not word2vec_model_path.exists():
-        pipeline.register_method("word2vec", word2vec_description, reason="Modelo Word2Vec (.model.npz) ausente.")
+        pipeline.register_method("word2vec", word2vec_description, reason="Word2Vec model file (.model.npz) is missing.")
     else:
         word2vec_embeddings = _load_numpy(word2vec_embeddings_path)
         if word2vec_embeddings.shape[0] != len(movies_df):
@@ -462,8 +452,8 @@ def build_default_pipeline() -> QueryPipeline:
                 "word2vec",
                 word2vec_description,
                 reason=(
-                    f"Embeddings Word2Vec com {word2vec_embeddings.shape[0]} linhas, "
-                    f"mas a base tem {len(movies_df)} filmes."
+                    f"Word2Vec embeddings have {word2vec_embeddings.shape[0]} rows, "
+                    f"but the dataset has {len(movies_df)} movies."
                 ),
             )
         else:
@@ -478,14 +468,14 @@ def build_default_pipeline() -> QueryPipeline:
 
     sentence_retriever: ExactRetriever | None = None
     if not sentence_embeddings_path.exists():
-        pipeline.register_method("sentence", sentence_description, reason="Arquivo sentence_embeddings.npy ausente.")
+        pipeline.register_method("sentence", sentence_description, reason="sentence_embeddings.npy file is missing.")
     elif sentence_embedder is None:
         pipeline.register_method(
             "sentence",
             sentence_description,
             reason=(
                 sentence_embedder_error
-                or "Encoder de consulta para sentence embeddings ainda nao esta disponivel neste ambiente."
+                or "Query encoder for sentence embeddings is not available in this environment."
             ),
         )
     else:
@@ -495,8 +485,8 @@ def build_default_pipeline() -> QueryPipeline:
                 "sentence",
                 sentence_description,
                 reason=(
-                    f"Sentence embeddings com {sentence_embeddings.shape[0]} linhas, "
-                    f"mas a base tem {len(movies_df)} filmes."
+                    f"Sentence embeddings have {sentence_embeddings.shape[0]} rows, "
+                    f"but the dataset has {len(movies_df)} movies."
                 ),
             )
         else:
@@ -513,15 +503,15 @@ def build_default_pipeline() -> QueryPipeline:
         pipeline.register_method(
             "hnsw",
             hnsw_description,
-            reason=f"Dependencia do HNSW indisponivel: {HNSW_IMPORT_ERROR}",
+            reason=f"HNSW dependency unavailable: {HNSW_IMPORT_ERROR}",
         )
     elif not hnsw_index_path.exists():
-        pipeline.register_method("hnsw", hnsw_description, reason="Indice HNSW ausente.")
+        pipeline.register_method("hnsw", hnsw_description, reason="HNSW index is missing.")
     elif sentence_embedder is None:
         pipeline.register_method(
             "hnsw",
             hnsw_description,
-            reason="HNSW depende do mesmo encoder de query dos sentence embeddings.",
+            reason="HNSW depends on the same query encoder used by sentence embeddings.",
         )
     else:
         try:
@@ -531,8 +521,8 @@ def build_default_pipeline() -> QueryPipeline:
                     "hnsw",
                     hnsw_description,
                     reason=(
-                        f"Indice HNSW com {hnsw_index.n_elements} itens, "
-                        f"mas a base tem {len(movies_df)} filmes."
+                        f"HNSW index has {hnsw_index.n_elements} items, "
+                        f"but the dataset has {len(movies_df)} movies."
                     ),
                 )
             else:
@@ -548,7 +538,7 @@ def build_default_pipeline() -> QueryPipeline:
                     ),
                 )
         except Exception as exc:  # noqa: BLE001
-            pipeline.register_method("hnsw", hnsw_description, reason=f"Falha ao carregar indice HNSW: {exc}")
+            pipeline.register_method("hnsw", hnsw_description, reason=f"Failed to load HNSW index: {exc}")
 
     if sentence_retriever is not None:
         pipeline.register_method(
@@ -568,7 +558,7 @@ def build_default_pipeline() -> QueryPipeline:
         pipeline.register_method(
             "cosine",
             cosine_description,
-            reason="Nenhuma busca exata disponivel no momento.",
+            reason="No exact search method is currently available.",
         )
 
     return pipeline

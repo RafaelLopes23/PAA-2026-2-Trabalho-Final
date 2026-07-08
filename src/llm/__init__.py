@@ -1,4 +1,4 @@
-"""Integracao com LLMs locais usados para formatar a resposta final."""
+"""Local LLM integration used to format the final answer."""
 
 from .tinyllama import GenerationResult, TinyLlamaClient, TinyLlamaConfig
 

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Busca Semântica de Filmes - Cine QA</title>
+    <title>Semantic Movie Search - Cine QA</title>
 
     <!-- Google Fonts: Julius Sans One for thin, wide Art Deco cinematic headers, Inter for premium modern body and controls -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -1035,8 +1035,8 @@
             </svg>
           </div>
           <div class="logo-title-group">
-            <h1 class="logo-title">Cine QA Semântico</h1>
-            <span class="logo-subtitle">Projetor de Consultas</span>
+            <h1 class="logo-title">Cine QA Semantic</h1>
+            <span class="logo-subtitle">Query Projector</span>
           </div>
         </div>
         <div class="system-status">
@@ -1062,7 +1062,7 @@
                 d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
               />
             </svg>
-            Catálogo: <span id="movies-count" style="margin-left: 2px">0</span>
+            Catalog: <span id="movies-count" style="margin-left: 2px">0</span>
           </div>
         </div>
       </header>
@@ -1079,12 +1079,12 @@
                 d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"
               />
             </svg>
-            Projeção
+            Projection
           </h2>
 
           <!-- Method Selection -->
           <div class="setting-group">
-            <span class="setting-label">Algoritmo & Busca</span>
+            <span class="setting-label">Algorithm & Search</span>
             <div id="method-options-list" class="method-selector">
               <!-- HNSW (Default/Recommended) -->
               <div class="method-option active" data-method="hnsw">
@@ -1093,7 +1093,7 @@
                   <span class="method-badge badge-available"></span>
                 </div>
                 <span class="method-desc"
-                  >Busca aproximada hierárquica rápida (Sentence
+                  >Fast hierarchical approximate search (Sentence
                   Embeddings).</span
                 >
               </div>
@@ -1105,7 +1105,7 @@
                   <span class="method-badge badge-available"></span>
                 </div>
                 <span class="method-desc"
-                  >Busca exata ideal. Prioriza Sentence Embeddings e cai para
+                  >Best exact search. Prioritizes Sentence Embeddings and falls back to
                   Word2Vec.</span
                 >
               </div>
@@ -1117,7 +1117,7 @@
                   <span class="method-badge badge-available"></span>
                 </div>
                 <span class="method-desc"
-                  >Busca exata cosseno usando all-MiniLM-L6-v2 (384d).</span
+                  >Exact cosine search using all-MiniLM-L6-v2 (384d).</span
                 >
               </div>
 
@@ -1128,7 +1128,7 @@
                   <span class="method-badge badge-available"></span>
                 </div>
                 <span class="method-desc"
-                  >Busca exata cosseno usando Word2Vec treinado na base
+                  >Exact cosine search using Word2Vec trained on the movie corpus
                   (100d).</span
                 >
               </div>
@@ -1138,7 +1138,7 @@
           <!-- Top K Slider -->
           <div class="setting-group">
             <div class="setting-label">
-              <span>Resultados (Top-K)</span>
+              <span>Results (Top-K)</span>
               <span id="top-k-val" class="value-indicator">5</span>
             </div>
             <div class="slider-container">
@@ -1169,7 +1169,7 @@
                 type="text"
                 id="search-input"
                 class="search-input"
-                placeholder="Digite uma sinopse, tema ou pergunta sobre um filme..."
+                placeholder="Type a synopsis, theme, or question about a movie..."
                 autocomplete="off"
               />
               <button type="submit" class="search-btn">
@@ -1180,21 +1180,21 @@
                     d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                   />
                 </svg>
-                Buscar
+                Search
               </button>
             </form>
 
             <!-- Quick Suggestions -->
             <div class="search-suggestions">
-              <span class="suggestion-title">Sugestões:</span>
+              <span class="suggestion-title">Suggestions:</span>
               <span
                 class="suggestion-chip"
                 onclick="
                   fillAndSearch(
-                    'Um grupo de astronautas viaja através de um buraco negro no espaço.',
+                    'A group of astronauts travels through a wormhole in space.',
                   )
                 "
-                >Buraco Negro</span
+                >Wormhole</span
               >
               <span
                 class="suggestion-chip"
@@ -1203,22 +1203,22 @@
                     'Former dream architect Dom Cobb infiltrates the subconscious of targets.',
                   )
                 "
-                >A Origem (Cobb)</span
+                >Inception (Cobb)</span
               >
               <span
                 class="suggestion-chip"
                 onclick="
                   fillAndSearch(
-                    'Comédia romântica de ficção científica onde duas pessoas tentam apagar as memórias um do outro.',
+                    'A science fiction romantic drama where two people try to erase memories of each other.',
                   )
                 "
-                >Brilho Eterno</span
+                >Eternal Sunshine</span
               >
               <span
                 class="suggestion-chip"
                 onclick="
                   fillAndSearch(
-                    'Brinquedos que ganham vida e passam por aventuras quando os donos não estão olhando.',
+                    'Toys come to life and go on adventures when their owners are not looking.',
                   )
                 "
                 >Toy Story</span
@@ -1229,17 +1229,17 @@
           <!-- Response Stats Panel (Timings) -->
           <div id="metrics-card" class="metrics-card">
             <div class="metric-item">
-              <span class="metric-label">Método Ativo</span>
+              <span class="metric-label">Active Method</span>
               <span id="metric-method" class="metric-value">-</span>
             </div>
             <div class="metric-item">
-              <span class="metric-label">Vetorização</span>
+              <span class="metric-label">Vectorization</span>
               <span id="metric-embedding" class="metric-value"
                 >0<span class="ms-unit">ms</span></span
               >
             </div>
             <div class="metric-item">
-              <span class="metric-label">Recuperação</span>
+              <span class="metric-label">Retrieval</span>
               <span id="metric-retrieval" class="metric-value"
                 >0<span class="ms-unit">ms</span></span
               >
@@ -1251,7 +1251,7 @@
               >
             </div>
             <div class="metric-item">
-              <span class="metric-label">Tempo Total</span>
+              <span class="metric-label">Total Time</span>
               <span
                 id="metric-total"
                 class="metric-value"
@@ -1265,9 +1265,9 @@
           <div id="loader" class="loader-wrapper">
             <div class="radar-spinner"></div>
             <div class="loader-text">
-              <span id="loader-title">Pesquisando no rolo de filme...</span>
+              <span id="loader-title">Searching the film reel...</span>
               <span id="loader-subtitle" class="loader-subtext"
-                >Indexando vetores semânticos...</span
+                >Indexing semantic vectors...</span
               >
             </div>
           </div>
@@ -1285,7 +1285,7 @@
                       d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z"
                     />
                   </svg>
-                  Resposta & Análise do Crítico
+                  Answer & Critic Analysis
                 </span>
                 <span id="ai-backend" class="ai-backend-badge">TINYLLAMA</span>
               </div>
@@ -1299,9 +1299,9 @@
 
             <!-- Results List Header -->
             <div class="section-header">
-              <span>Rolo de Resultados</span>
+              <span>Result Reel</span>
               <span id="results-count" class="results-info-badge"
-                >Mostrando 0 filmes</span
+                >Showing 0 movies</span
               >
             </div>
 
@@ -1317,11 +1317,10 @@
                   />
                 </svg>
               </div>
-              <span class="empty-text">Nenhuma projeção ativa</span>
+              <span class="empty-text">No active projection</span>
               <span class="empty-subtext"
-                >Escolha o algoritmo de busca na barra lateral, digite um tema
-                ou pergunta sobre um filme e clique em Buscar para exibir as
-                películas correspondentes.</span
+                >Choose a search algorithm in the sidebar, type a movie theme
+                or question, and click Search to display matching films.</span
               >
             </div>
 
@@ -1341,7 +1340,7 @@
           d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
         />
       </svg>
-      <span id="toast-message">Erro no processamento.</span>
+      <span id="toast-message">Processing error.</span>
     </div>
 
     <!-- Application Script -->
@@ -1401,7 +1400,7 @@
 
           // Update movies count
           if (data.movies_count) {
-            moviesCount.innerText = data.movies_count.toLocaleString("pt-BR");
+            moviesCount.innerText = data.movies_count.toLocaleString("en-US");
             moviesCountBadge.style.display = "inline-flex";
           }
 
@@ -1412,7 +1411,7 @@
           updateSidebarMethods();
         } catch (err) {
           console.error("System Health Check Failed:", err);
-          showToast("Falha na conexão com a API do projetor.");
+          showToast("Could not connect to the projector API.");
         }
       }
 
@@ -1445,14 +1444,14 @@
               option.classList.add("disabled");
               if (badge) {
                 badge.className = "method-badge badge-unavailable";
-                badge.innerText = "Ausente";
+                badge.innerText = "Missing";
               }
 
               // Add reason detail
               if (meta.reason) {
                 const reasonSpan = document.createElement("span");
                 reasonSpan.className = "method-reason";
-                reasonSpan.innerText = `Motivo: ${meta.reason}`;
+                reasonSpan.innerText = `Reason: ${meta.reason}`;
                 option.appendChild(reasonSpan);
               }
 
@@ -1486,7 +1485,7 @@
         const topK = parseInt(document.getElementById("top-k-slider").value);
 
         if (!question || question.length < 3) {
-          showToast("A pergunta deve conter no mínimo 3 caracteres.");
+          showToast("The question must contain at least 3 characters.");
           return;
         }
 
@@ -1495,19 +1494,19 @@
         document.getElementById("movies-grid").style.display = "none";
         document.getElementById("ai-answer-card").style.display = "none";
         document.getElementById("metrics-card").style.display = "none";
-        document.getElementById("results-count").innerText = "Projetando...";
+        document.getElementById("results-count").innerText = "Projecting...";
 
         const loader = document.getElementById("loader");
         const loaderSubtitle = document.getElementById("loader-subtitle");
         loader.style.display = "flex";
         loaderSubtitle.innerText =
-          "Carregando rolo de embeddings semânticos...";
+          "Loading the semantic embedding reel...";
 
         const stages = [
-          "Localizando fotogramas similares no índice HNSW...",
-          "Calculando distâncias no espaço vetorial...",
-          "Enviando sinopses relevantes para a crítica da IA...",
-          "Imprimindo a análise final do crítico...",
+          "Finding similar frames in the HNSW index...",
+          "Computing distances in vector space...",
+          "Sending relevant synopses to the AI critic...",
+          "Printing the critic's final analysis...",
         ];
         let stageIdx = 0;
         const stageInterval = setInterval(() => {
@@ -1534,7 +1533,7 @@
           if (!response.ok) {
             const errorData = await response.json();
             const msg =
-              errorData.detail?.message || "Falha ao processar consulta.";
+              errorData.detail?.message || "Failed to process query.";
             throw new Error(msg);
           }
 
@@ -1545,7 +1544,7 @@
           console.error(err);
           loader.style.display = "none";
           document.getElementById("empty-state").style.display = "flex";
-          showToast(err.message || "Erro ao conectar com a API.");
+          showToast(err.message || "Error connecting to the API.");
         }
       }
 
@@ -1589,7 +1588,7 @@
 
         if (data.answer) {
           aiContent.innerHTML = "";
-          aiBackend.innerText = `CRÍTICO: ${(data.llm_backend || "TINYLLAMA").toUpperCase()}`;
+          aiBackend.innerText = `CRITIC: ${(data.llm_backend || "TINYLLAMA").toUpperCase()}`;
 
           // Show warnings if any
           if (data.warnings && data.warnings.length > 0) {
@@ -1624,13 +1623,13 @@
 
         const resultsCount = document.getElementById("results-count");
         const count = data.results ? data.results.length : 0;
-        resultsCount.innerText = `${count} filme${count !== 1 ? "s" : ""} localizado${count !== 1 ? "s" : ""}`;
+        resultsCount.innerText = `Showing ${count} movie${count !== 1 ? "s" : ""}`;
 
         if (count === 0) {
           document.getElementById("empty-state").style.display = "flex";
           document
             .getElementById("empty-state")
-            .querySelector(".empty-text").innerText = "Nenhum filme localizado";
+            .querySelector(".empty-text").innerText = "No movies found";
           return;
         }
 
@@ -1658,7 +1657,7 @@
                             <h3 class="movie-title">${movie.title}</h3>
                             <div class="score-container">
                                 <div class="score-gauge-wrapper">
-                                    <span class="score-text">${pct}% SIMIL.</span>
+                                    <span class="score-text">${pct}% MATCH</span>
                                     <div class="score-bar-bg">
                                         <div class="score-bar-fill" style="width: ${pct}%"></div>
                                     </div>

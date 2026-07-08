@@ -1,4 +1,4 @@
-"""Schemas Pydantic da API."""
+"""API Pydantic schemas."""
 
 from __future__ import annotations
 
@@ -6,10 +6,10 @@ from pydantic import BaseModel, Field
 
 
 class QueryRequest(BaseModel):
-    question: str = Field(..., min_length=3, description="Pergunta do usuario em linguagem natural.")
+    question: str = Field(..., min_length=3, description="User question in natural language.")
     method: str = Field(
         default="hnsw",
-        description="Metodo de busca: hnsw, sentence, word2vec ou cosine.",
+        description="Search method: hnsw, sentence, word2vec, or cosine.",
     )
     top_k: int = Field(default=5, ge=1, le=20)
 

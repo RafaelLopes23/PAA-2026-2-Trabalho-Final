@@ -1,4 +1,4 @@
-"""Servidor FastAPI para a demonstracao do projeto final."""
+"""FastAPI server for the project demonstration."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="PAA Movie QA",
     version="0.1.0",
-    description="Sistema de perguntas e respostas sobre filmes com busca semantica e TinyLlama.",
+    description="Movie question-answering system with semantic search and TinyLlama.",
     lifespan=lifespan,
 )
 
@@ -35,7 +35,7 @@ from fastapi.responses import HTMLResponse
 
 @app.get("/", response_model=MethodsResponse)
 def root(request: Request) -> HTMLResponse | MethodsResponse:
-    # Se a requisição vier de um navegador (solicitando HTML), serve a interface gráfica
+    # Serve the graphical interface for browser requests.
     accept = request.headers.get("accept", "")
     if "text/html" in accept:
         static_index = os.path.join(os.path.dirname(__file__), "static/index.html")
@@ -52,10 +52,10 @@ def root(request: Request) -> HTMLResponse | MethodsResponse:
 
 @app.get("/gui", response_class=HTMLResponse)
 def gui() -> HTMLResponse:
-    """Serve a interface gráfica de busca semântica."""
+    """Serve the semantic search graphical interface."""
     static_index = os.path.join(os.path.dirname(__file__), "static/index.html")
     if not os.path.exists(static_index):
-        raise HTTPException(status_code=404, detail="Interface gráfica não encontrada.")
+        raise HTTPException(status_code=404, detail="Graphical interface not found.")
     with open(static_index, "r", encoding="utf-8") as f:
         return HTMLResponse(content=f.read())
 
